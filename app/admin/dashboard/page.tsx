@@ -36,7 +36,7 @@ export default function AdminDashboard() {
   const [editingCode, setEditingCode] = useState<string | null>(null)
   const [newCode, setNewCode] = useState('')
   const [saving, setSaving] = useState(false)
-  const [tab, setTab] = useState<'scores' | 'codes' | 'settings'>('scores')
+  const [tab, setTab] = useState<'scores' | 'settings'>('scores')
   const [filterRotation, setFilterRotation] = useState<number | null>(null)
 
   async function load() {
@@ -112,7 +112,7 @@ export default function AdminDashboard() {
 
       {/* Tabs */}
       <div className="flex gap-2 mb-6">
-        {(['scores', 'codes', 'settings'] as const).map(t => (
+        {(['scores', 'settings'] as const).map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -120,7 +120,7 @@ export default function AdminDashboard() {
               tab === t ? 'bg-yellow-400 text-slate-900' : 'bg-slate-700 hover:bg-slate-600'
             }`}
           >
-            {t === 'scores' ? '📊 Scores' : t === 'codes' ? '🔑 Codes' : '⚙️ Paramètres'}
+            {t === 'scores' ? '📊 Scores' : '⚙️ Paramètres'}
           </button>
         ))}
       </div>

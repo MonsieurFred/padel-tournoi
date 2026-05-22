@@ -23,10 +23,9 @@ type Match = {
   equipe_b: string
   score_a: number | null
   score_b: number | null
-  repos: string | null
 }
 
-type Step = 'rotation' | 'terrain' | 'pin' | 'score' | 'done'
+type Step = 'rotation' | 'terrain' | 'confirm' | 'score' | 'done'
 
 function getCurrentRotation(): number {
   const now = new Date()
@@ -50,19 +49,16 @@ function ScorePageInner() {
   const searchParams = useSearchParams()
   const terrainParam = searchParams.get('terrain')
 
-  const [step, setStep] = useState<Step>(terrainParam ? 'pin' : 'rotation')
+  const [step, setStep] = useState<Step>(terrainParam ? 'confirm' : 'rotation')
   const [rotation, setRotation] = useState<number>(getCurrentRotation())
   const [matches, setMatches] = useState<Match[]>([])
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null)
-  const [pin, setPin] = useState('')
-  const [pinError, setPinError] = useState('')
   const [scoreA, setScoreA] = useState('')
   const [scoreB, setScoreB] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [nextMatch, setNextMatch] = useState<Match | null>(null)
   const [error, setError] = useState('')
 
-  // Si QR par terrain : charge directement le match courant pour ce terrain
   useEffect(() => {
     if (terrainParam) {
       const rot = getCurrentRotation()
@@ -90,22 +86,6 @@ function ScorePageInner() {
     setStep('terrain')
   }
 
-  async function verifyPin() {
-    if (!selectedMatch) return
-    setPinError('')
-    const res = await fetch('/api/score', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'verify', terrain: selectedMatch.terrain, code: pin }),
-    })
-    const data = await res.json()
-    if (data.ok) {
-      setStep('score')
-    } else {
-      setPinError('Code incorrect. Vérifie le code affiché sur le terrain.')
-    }
-  }
-
   async function submitScore() {
     if (!selectedMatch) return
     const sA = parseInt(scoreA)
@@ -130,8 +110,14 @@ function ScorePageInner() {
     setSubmitting(false)
   }
 
-  // Affichage du terrain sélectionné (via QR ou liste)
-  const terrainLabel = selectedMatch?.terrain || terrainParam || ''
+  function reset() {
+    setStep(terrainParam ? 'confirm' : 'rotation')
+    setScoreA(''); setScoreB(''); setNextMatch(null); setError('')
+    if (terrainParam) {
+      const rot = getCurrentRotation()
+      loadMatchForTerrain(terrainParam, rot)
+    }
+  }
 
   return (
     <div className="min-h-screen px-4 py-8 max-w-md mx-auto">
@@ -142,8 +128,8 @@ function ScorePageInner() {
         </h1>
       </div>
 
-      {/* Étape 1 : Rotation (mode global seulement) */}
-      {step === 'rotation' && !terrainParam && (
+      {/* Étape 1 : Rotation (mode global) */}
+      {step === 'rotation' && (
         <div>
           <p className="text-slate-400 mb-4">Sélectionne ta rotation :</p>
           <div className="flex flex-col gap-3">
@@ -154,8 +140,7 @@ function ScorePageInner() {
                 className={`flex items-center justify-between px-5 py-4 rounded-xl font-semibold text-left transition-colors
                   ${r.numero === getCurrentRotation()
                     ? 'bg-yellow-400 text-slate-900'
-                    : 'bg-slate-700 hover:bg-slate-600'
-                  }`}
+                    : 'bg-slate-700 hover:bg-slate-600'}`}
               >
                 <span>Rotation {r.numero}</span>
                 <span className="text-sm font-normal opacity-80">{r.horaire}</span>
@@ -168,32 +153,28 @@ function ScorePageInner() {
         </div>
       )}
 
-      {/* Étape 2 : Terrain (mode global seulement) */}
-      {step === 'terrain' && !terrainParam && (
+      {/* Étape 2 : Terrain (mode global) */}
+      {step === 'terrain' && (
         <div>
-          <p className="text-slate-400 mb-1">Rotation {rotation} · {ROTATIONS[rotation - 1].horaire}</p>
-          <p className="text-slate-400 mb-4">Sélectionne ton terrain :</p>
+          <p className="text-slate-400 mb-4">Rotation {rotation} · {ROTATIONS[rotation - 1].horaire}</p>
           <div className="flex flex-col gap-3">
             {matches.map(m => (
               <button
                 key={m.id}
-                onClick={() => { setSelectedMatch(m); setStep('pin') }}
+                onClick={() => { setSelectedMatch(m); setStep('confirm') }}
                 disabled={m.score_a !== null}
                 className={`flex flex-col px-5 py-4 rounded-xl text-left transition-colors
-                  ${m.score_a !== null
-                    ? 'bg-slate-800 opacity-50 cursor-not-allowed'
-                    : 'bg-slate-700 hover:bg-slate-600'
-                  }`}
+                  ${m.score_a !== null ? 'bg-slate-800 opacity-50 cursor-not-allowed' : 'bg-slate-700 hover:bg-slate-600'}`}
               >
                 <div className="flex items-center justify-between mb-1">
                   <span className="font-bold text-yellow-400">{m.terrain}</span>
-                  <span className="text-sm text-slate-400">{GROUPE_EMOJI[m.groupe]} {m.groupe}</span>
+                  <span className="text-sm text-slate-400">{GROUPE_EMOJI[m.groupe]}</span>
                 </div>
                 <p className="text-sm">{m.equipe_a}</p>
                 <p className="text-xs text-slate-400 my-0.5">vs</p>
                 <p className="text-sm">{m.equipe_b}</p>
                 {m.score_a !== null && (
-                  <p className="text-xs text-green-400 mt-1">✓ Score enregistré : {m.score_a} - {m.score_b}</p>
+                  <p className="text-xs text-green-400 mt-1">✓ {m.score_a} - {m.score_b}</p>
                 )}
               </button>
             ))}
@@ -204,79 +185,83 @@ function ScorePageInner() {
         </div>
       )}
 
-      {/* Étape 3 : PIN */}
-      {step === 'pin' && (
+      {/* Étape 3 : Confirmation du match */}
+      {step === 'confirm' && (
         <div>
           {selectedMatch ? (
-            <div className="bg-slate-800 rounded-xl p-4 mb-6">
-              <p className="text-yellow-400 font-bold text-lg mb-1">{selectedMatch.terrain}</p>
-              <p className="text-xs text-slate-400 mb-1">{GROUPE_EMOJI[selectedMatch.groupe]} {selectedMatch.groupe} · {selectedMatch.horaire}</p>
-              <p className="text-sm">{selectedMatch.equipe_a}</p>
-              <p className="text-xs text-slate-400 my-0.5">vs</p>
-              <p className="text-sm">{selectedMatch.equipe_b}</p>
-              {selectedMatch.score_a !== null && (
-                <p className="text-sm text-green-400 mt-2">✓ Score déjà enregistré : {selectedMatch.score_a} - {selectedMatch.score_b}</p>
-              )}
-            </div>
-          ) : (
-            <div className="bg-slate-800 rounded-xl p-4 mb-6 text-slate-400">
-              Chargement du match…
-            </div>
-          )}
+            <>
+              <p className="text-slate-400 mb-6 text-lg">C'est bien ton match ?</p>
 
-          <p className="text-slate-300 mb-3">Entre le code du terrain :</p>
-          <input
-            type="number"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            value={pin}
-            onChange={e => { setPin(e.target.value); setPinError('') }}
-            placeholder="Code à 4 chiffres"
-            className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-4 text-2xl text-center tracking-widest focus:outline-none focus:border-yellow-400 mb-3"
-            maxLength={6}
-          />
-          {pinError && <p className="text-red-400 text-sm mb-3">{pinError}</p>}
-          <button
-            onClick={verifyPin}
-            disabled={pin.length < 4 || !selectedMatch}
-            className="w-full bg-yellow-400 disabled:opacity-50 hover:bg-yellow-300 text-slate-900 font-bold py-4 rounded-xl text-lg transition-colors"
-          >
-            Valider
-          </button>
-          {!terrainParam && (
-            <button onClick={() => { setStep('terrain'); setPin(''); setPinError('') }} className="mt-3 w-full text-slate-400 hover:text-white text-sm py-2">
-              ← Retour
-            </button>
+              <div className="bg-slate-800 rounded-2xl p-6 mb-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="text-yellow-400 font-bold text-xl">{selectedMatch.terrain}</span>
+                  <span className="text-slate-500 text-sm">{selectedMatch.horaire}</span>
+                </div>
+
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-full bg-slate-700 rounded-xl px-4 py-3 text-center">
+                    <p className="font-semibold text-white">{selectedMatch.equipe_a}</p>
+                  </div>
+                  <span className="text-slate-400 font-bold text-lg">VS</span>
+                  <div className="w-full bg-slate-700 rounded-xl px-4 py-3 text-center">
+                    <p className="font-semibold text-white">{selectedMatch.equipe_b}</p>
+                  </div>
+                </div>
+
+                {selectedMatch.score_a !== null && (
+                  <p className="text-green-400 text-sm text-center mt-4">
+                    ✓ Score déjà enregistré : {selectedMatch.score_a} - {selectedMatch.score_b}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setStep('score')}
+                  disabled={selectedMatch.score_a !== null}
+                  className="flex-1 bg-green-500 disabled:opacity-40 hover:bg-green-400 text-white font-bold py-5 rounded-2xl text-xl transition-colors"
+                >
+                  ✅ Oui
+                </button>
+                <button
+                  onClick={() => terrainParam ? setStep('rotation') : setStep('terrain')}
+                  className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-5 rounded-2xl text-xl transition-colors"
+                >
+                  ❌ Non
+                </button>
+              </div>
+            </>
+          ) : (
+            <p className="text-slate-400">Chargement du match…</p>
           )}
         </div>
       )}
 
-      {/* Étape 4 : Score */}
+      {/* Étape 4 : Saisie des scores */}
       {step === 'score' && selectedMatch && (
         <div>
           <div className="bg-slate-800 rounded-xl p-4 mb-6">
-            <p className="text-yellow-400 font-bold text-lg mb-1">{selectedMatch.terrain}</p>
-            <p className="text-xs text-slate-400">{selectedMatch.horaire}</p>
+            <p className="text-yellow-400 font-bold">{selectedMatch.terrain} · {selectedMatch.horaire}</p>
           </div>
 
           <div className="flex flex-col gap-4 mb-6">
             <div>
-              <label className="text-slate-400 text-sm mb-1 block">{selectedMatch.equipe_a}</label>
+              <label className="text-slate-300 text-sm mb-2 block font-medium">{selectedMatch.equipe_a}</label>
               <input
                 type="number" inputMode="numeric" min={0}
                 value={scoreA} onChange={e => setScoreA(e.target.value)}
-                placeholder="Score"
-                className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-4 text-3xl text-center focus:outline-none focus:border-yellow-400"
+                placeholder="0"
+                className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-4 text-4xl text-center font-bold focus:outline-none focus:border-yellow-400"
               />
             </div>
-            <div className="text-center text-slate-500 text-sm font-bold">VS</div>
+            <div className="text-center text-slate-500 font-bold">VS</div>
             <div>
-              <label className="text-slate-400 text-sm mb-1 block">{selectedMatch.equipe_b}</label>
+              <label className="text-slate-300 text-sm mb-2 block font-medium">{selectedMatch.equipe_b}</label>
               <input
                 type="number" inputMode="numeric" min={0}
                 value={scoreB} onChange={e => setScoreB(e.target.value)}
-                placeholder="Score"
-                className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-4 text-3xl text-center focus:outline-none focus:border-yellow-400"
+                placeholder="0"
+                className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-4 text-4xl text-center font-bold focus:outline-none focus:border-yellow-400"
               />
             </div>
           </div>
@@ -289,23 +274,26 @@ function ScorePageInner() {
           >
             {submitting ? 'Envoi...' : 'Confirmer le score'}
           </button>
+          <button onClick={() => setStep('confirm')} className="mt-3 w-full text-slate-400 hover:text-white text-sm py-2">
+            ← Retour
+          </button>
         </div>
       )}
 
-      {/* Étape 5 : Confirmation */}
+      {/* Étape 5 : Confirmation finale */}
       {step === 'done' && selectedMatch && (
         <div className="text-center">
           <div className="text-6xl mb-4">✅</div>
           <h2 className="text-2xl font-bold mb-2">Score enregistré !</h2>
           <div className="bg-slate-800 rounded-xl p-4 mb-6 text-left">
             <p className="text-yellow-400 font-bold mb-2">{selectedMatch.terrain}</p>
-            <p className="text-sm">{selectedMatch.equipe_a} <span className="text-yellow-400 font-bold">{scoreA}</span></p>
-            <p className="text-sm">{selectedMatch.equipe_b} <span className="text-yellow-400 font-bold">{scoreB}</span></p>
+            <p className="text-sm">{selectedMatch.equipe_a} <span className="text-yellow-400 font-bold text-lg ml-2">{scoreA}</span></p>
+            <p className="text-sm">{selectedMatch.equipe_b} <span className="text-yellow-400 font-bold text-lg ml-2">{scoreB}</span></p>
           </div>
 
           {nextMatch && (
             <div className="bg-slate-800 rounded-xl p-4 mb-6 text-left">
-              <p className="text-slate-400 text-sm mb-1">Prochain match sur ce terrain :</p>
+              <p className="text-slate-400 text-sm mb-2">Prochain match sur ce terrain :</p>
               <p className="font-semibold">{nextMatch.equipe_a}</p>
               <p className="text-slate-400 text-xs">vs</p>
               <p className="font-semibold">{nextMatch.equipe_b}</p>
@@ -314,20 +302,10 @@ function ScorePageInner() {
           )}
 
           <div className="flex flex-col gap-3">
-            <button
-              onClick={() => {
-                setStep(terrainParam ? 'pin' : 'rotation')
-                setPin(''); setScoreA(''); setScoreB(''); setNextMatch(null); setError('')
-                if (terrainParam) {
-                  const rot = getCurrentRotation()
-                  loadMatchForTerrain(terrainParam, rot)
-                }
-              }}
-              className="w-full bg-yellow-400 hover:bg-yellow-300 text-slate-900 font-bold py-4 rounded-xl text-lg transition-colors"
-            >
+            <button onClick={reset} className="w-full bg-yellow-400 hover:bg-yellow-300 text-slate-900 font-bold py-4 rounded-xl text-lg transition-colors">
               Entrer un autre score
             </button>
-            <Link href="/classement" className="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-4 rounded-xl text-lg transition-colors text-center">
+            <Link href="/classement" className="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-4 rounded-xl text-lg text-center transition-colors">
               Voir le classement
             </Link>
           </div>
