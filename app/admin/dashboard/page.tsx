@@ -209,46 +209,6 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Onglet Codes */}
-      {tab === 'codes' && (
-        <div className="flex flex-col gap-3">
-          <p className="text-slate-400 text-sm mb-2">
-            Codes PIN affichés sur chaque terrain. Les joueurs doivent entrer ce code pour valider un score.
-          </p>
-          {codes.map(c => (
-            <div key={c.terrain} className="bg-slate-800 rounded-xl px-4 py-3">
-              {editingCode === c.terrain ? (
-                <div className="flex gap-2 items-center">
-                  <span className="font-bold text-yellow-400 flex-1">{c.terrain}</span>
-                  <input
-                    type="text" value={newCode} onChange={e => setNewCode(e.target.value)}
-                    placeholder="Nouveau code"
-                    maxLength={6}
-                    className="bg-slate-700 rounded-lg px-3 py-2 text-center w-28 focus:outline-none"
-                  />
-                  <button onClick={saveCode} disabled={saving} className="bg-green-500 text-white px-3 py-2 rounded-lg text-sm font-bold">
-                    OK
-                  </button>
-                  <button onClick={() => setEditingCode(null)} className="text-slate-400 text-sm">✕</button>
-                </div>
-              ) : (
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-yellow-400">{c.terrain}</span>
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl font-mono font-bold tracking-widest">{c.code}</span>
-                    <button
-                      onClick={() => { setEditingCode(c.terrain); setNewCode(c.code) }}
-                      className="text-slate-400 hover:text-yellow-400"
-                    >
-                      ✏️
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* Onglet Paramètres */}
       {tab === 'settings' && (
