@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
 const ROTATIONS = [
@@ -29,16 +30,13 @@ type Step = 'rotation' | 'terrain' | 'pin' | 'score' | 'done'
 
 function getCurrentRotation(): number {
   const now = new Date()
-  const h = now.getHours()
-  const m = now.getMinutes()
-  const total = h * 60 + m
-  if (total < 18 * 60 + 30) return 1
-  if (total < 18 * 60 + 45) return 1
-  if (total < 19 * 60 + 0) return 2
-  if (total < 19 * 60 + 15) return 3
-  if (total < 19 * 60 + 30) return 4
-  if (total < 19 * 60 + 45) return 5
-  if (total <= 20 * 60) return 6
+  const t = now.getHours() * 60 + now.getMinutes()
+  if (t < 18 * 60 + 30) return 1
+  if (t < 18 * 60 + 45) return 1
+  if (t < 19 * 60 + 0) return 2
+  if (t < 19 * 60 + 15) return 3
+  if (t < 19 * 60 + 30) return 4
+  if (t < 19 * 60 + 45) return 5
   return 6
 }
 
@@ -48,8 +46,11 @@ const GROUPE_EMOJI: Record<string, string> = {
   'Débutants': '🥉',
 }
 
-export default function ScorePage() {
-  const [step, setStep] = useState<Step>('rotation')
+function ScorePageInner() {
+  const searchParams = useSearchParams()
+  const terrainParam = searchParams.get('terrain')
+
+  const [step, setStep] = useState<Step>(terrainParam ? 'pin' : 'rotation')
   const [rotation, setRotation] = useState<number>(getCurrentRotation())
   const [matches, setMatches] = useState<Match[]>([])
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null)
@@ -60,6 +61,26 @@ export default function ScorePage() {
   const [submitting, setSubmitting] = useState(false)
   const [nextMatch, setNextMatch] = useState<Match | null>(null)
   const [error, setError] = useState('')
+
+  // Si QR par terrain : charge directement le match courant pour ce terrain
+  useEffect(() => {
+    if (terrainParam) {
+      const rot = getCurrentRotation()
+      setRotation(rot)
+      loadMatchForTerrain(terrainParam, rot)
+    }
+  }, [terrainParam])
+
+  async function loadMatchForTerrain(terrain: string, rot: number) {
+    const res = await fetch(`/api/classement?rotation=${rot}`)
+    const data = await res.json()
+    const all: Match[] = data.matches || []
+    const match = all.find(m => m.terrain === terrain)
+    if (match) {
+      setSelectedMatch(match)
+      setMatches(all)
+    }
+  }
 
   async function loadMatches(rot: number) {
     const res = await fetch(`/api/classement?rotation=${rot}`)
@@ -109,15 +130,20 @@ export default function ScorePage() {
     setSubmitting(false)
   }
 
+  // Affichage du terrain sélectionné (via QR ou liste)
+  const terrainLabel = selectedMatch?.terrain || terrainParam || ''
+
   return (
     <div className="min-h-screen px-4 py-8 max-w-md mx-auto">
       <div className="flex items-center gap-3 mb-8">
         <Link href="/" className="text-slate-400 hover:text-white text-2xl">←</Link>
-        <h1 className="text-2xl font-bold">Entrer un score</h1>
+        <h1 className="text-2xl font-bold">
+          {terrainParam ? `Terrain ${terrainParam}` : 'Entrer un score'}
+        </h1>
       </div>
 
-      {/* Étape 1 : Rotation */}
-      {step === 'rotation' && (
+      {/* Étape 1 : Rotation (mode global seulement) */}
+      {step === 'rotation' && !terrainParam && (
         <div>
           <p className="text-slate-400 mb-4">Sélectionne ta rotation :</p>
           <div className="flex flex-col gap-3">
@@ -134,7 +160,7 @@ export default function ScorePage() {
                 <span>Rotation {r.numero}</span>
                 <span className="text-sm font-normal opacity-80">{r.horaire}</span>
                 {r.numero === getCurrentRotation() && (
-                  <span className="text-xs bg-slate-900/30 px-2 py-0.5 rounded-full">EN COURS</span>
+                  <span className="text-xs bg-slate-900/30 px-2 py-0.5 rounded-full ml-2">EN COURS</span>
                 )}
               </button>
             ))}
@@ -142,8 +168,8 @@ export default function ScorePage() {
         </div>
       )}
 
-      {/* Étape 2 : Terrain */}
-      {step === 'terrain' && (
+      {/* Étape 2 : Terrain (mode global seulement) */}
+      {step === 'terrain' && !terrainParam && (
         <div>
           <p className="text-slate-400 mb-1">Rotation {rotation} · {ROTATIONS[rotation - 1].horaire}</p>
           <p className="text-slate-400 mb-4">Sélectionne ton terrain :</p>
@@ -179,14 +205,24 @@ export default function ScorePage() {
       )}
 
       {/* Étape 3 : PIN */}
-      {step === 'pin' && selectedMatch && (
+      {step === 'pin' && (
         <div>
-          <div className="bg-slate-800 rounded-xl p-4 mb-6">
-            <p className="text-yellow-400 font-bold text-lg mb-1">{selectedMatch.terrain}</p>
-            <p className="text-sm">{selectedMatch.equipe_a}</p>
-            <p className="text-xs text-slate-400 my-0.5">vs</p>
-            <p className="text-sm">{selectedMatch.equipe_b}</p>
-          </div>
+          {selectedMatch ? (
+            <div className="bg-slate-800 rounded-xl p-4 mb-6">
+              <p className="text-yellow-400 font-bold text-lg mb-1">{selectedMatch.terrain}</p>
+              <p className="text-xs text-slate-400 mb-1">{GROUPE_EMOJI[selectedMatch.groupe]} {selectedMatch.groupe} · {selectedMatch.horaire}</p>
+              <p className="text-sm">{selectedMatch.equipe_a}</p>
+              <p className="text-xs text-slate-400 my-0.5">vs</p>
+              <p className="text-sm">{selectedMatch.equipe_b}</p>
+              {selectedMatch.score_a !== null && (
+                <p className="text-sm text-green-400 mt-2">✓ Score déjà enregistré : {selectedMatch.score_a} - {selectedMatch.score_b}</p>
+              )}
+            </div>
+          ) : (
+            <div className="bg-slate-800 rounded-xl p-4 mb-6 text-slate-400">
+              Chargement du match…
+            </div>
+          )}
 
           <p className="text-slate-300 mb-3">Entre le code du terrain :</p>
           <input
@@ -202,14 +238,16 @@ export default function ScorePage() {
           {pinError && <p className="text-red-400 text-sm mb-3">{pinError}</p>}
           <button
             onClick={verifyPin}
-            disabled={pin.length < 4}
+            disabled={pin.length < 4 || !selectedMatch}
             className="w-full bg-yellow-400 disabled:opacity-50 hover:bg-yellow-300 text-slate-900 font-bold py-4 rounded-xl text-lg transition-colors"
           >
             Valider
           </button>
-          <button onClick={() => { setStep('terrain'); setPin(''); setPinError('') }} className="mt-3 w-full text-slate-400 hover:text-white text-sm py-2">
-            ← Retour
-          </button>
+          {!terrainParam && (
+            <button onClick={() => { setStep('terrain'); setPin(''); setPinError('') }} className="mt-3 w-full text-slate-400 hover:text-white text-sm py-2">
+              ← Retour
+            </button>
+          )}
         </div>
       )}
 
@@ -218,17 +256,15 @@ export default function ScorePage() {
         <div>
           <div className="bg-slate-800 rounded-xl p-4 mb-6">
             <p className="text-yellow-400 font-bold text-lg mb-1">{selectedMatch.terrain}</p>
+            <p className="text-xs text-slate-400">{selectedMatch.horaire}</p>
           </div>
 
           <div className="flex flex-col gap-4 mb-6">
             <div>
               <label className="text-slate-400 text-sm mb-1 block">{selectedMatch.equipe_a}</label>
               <input
-                type="number"
-                inputMode="numeric"
-                min={0}
-                value={scoreA}
-                onChange={e => setScoreA(e.target.value)}
+                type="number" inputMode="numeric" min={0}
+                value={scoreA} onChange={e => setScoreA(e.target.value)}
                 placeholder="Score"
                 className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-4 text-3xl text-center focus:outline-none focus:border-yellow-400"
               />
@@ -237,11 +273,8 @@ export default function ScorePage() {
             <div>
               <label className="text-slate-400 text-sm mb-1 block">{selectedMatch.equipe_b}</label>
               <input
-                type="number"
-                inputMode="numeric"
-                min={0}
-                value={scoreB}
-                onChange={e => setScoreB(e.target.value)}
+                type="number" inputMode="numeric" min={0}
+                value={scoreB} onChange={e => setScoreB(e.target.value)}
                 placeholder="Score"
                 className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-4 text-3xl text-center focus:outline-none focus:border-yellow-400"
               />
@@ -255,9 +288,6 @@ export default function ScorePage() {
             className="w-full bg-green-500 disabled:opacity-50 hover:bg-green-400 text-white font-bold py-4 rounded-xl text-lg transition-colors"
           >
             {submitting ? 'Envoi...' : 'Confirmer le score'}
-          </button>
-          <button onClick={() => { setStep('terrain'); setScoreA(''); setScoreB(''); setError('') }} className="mt-3 w-full text-slate-400 hover:text-white text-sm py-2">
-            ← Retour
           </button>
         </div>
       )}
@@ -275,7 +305,7 @@ export default function ScorePage() {
 
           {nextMatch && (
             <div className="bg-slate-800 rounded-xl p-4 mb-6 text-left">
-              <p className="text-slate-400 text-sm mb-1">Prochain match sur {nextMatch.terrain} :</p>
+              <p className="text-slate-400 text-sm mb-1">Prochain match sur ce terrain :</p>
               <p className="font-semibold">{nextMatch.equipe_a}</p>
               <p className="text-slate-400 text-xs">vs</p>
               <p className="font-semibold">{nextMatch.equipe_b}</p>
@@ -286,13 +316,12 @@ export default function ScorePage() {
           <div className="flex flex-col gap-3">
             <button
               onClick={() => {
-                setStep('rotation')
-                setSelectedMatch(null)
-                setPin('')
-                setScoreA('')
-                setScoreB('')
-                setNextMatch(null)
-                setError('')
+                setStep(terrainParam ? 'pin' : 'rotation')
+                setPin(''); setScoreA(''); setScoreB(''); setNextMatch(null); setError('')
+                if (terrainParam) {
+                  const rot = getCurrentRotation()
+                  loadMatchForTerrain(terrainParam, rot)
+                }
               }}
               className="w-full bg-yellow-400 hover:bg-yellow-300 text-slate-900 font-bold py-4 rounded-xl text-lg transition-colors"
             >
@@ -305,5 +334,13 @@ export default function ScorePage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function ScorePage() {
+  return (
+    <Suspense>
+      <ScorePageInner />
+    </Suspense>
   )
 }
