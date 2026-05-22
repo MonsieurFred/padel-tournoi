@@ -21,14 +21,6 @@ type Standings = {
   debutants: Standing[]
 }
 
-type CurrentMatch = {
-  terrain: string
-  equipe_a: string
-  equipe_b: string
-  score_a: number | null
-  score_b: number | null
-  groupe: string
-}
 
 const GROUPES = [
   { key: 'competiteurs', label: 'Compétiteurs', color: '#f59e0b' },
@@ -36,16 +28,6 @@ const GROUPES = [
   { key: 'debutants', label: 'Débutants', color: '#6366f1' },
 ] as const
 
-function getCurrentRotation(): number {
-  const now = new Date()
-  const t = now.getHours() * 60 + now.getMinutes()
-  if (t < 18 * 60 + 45) return 1
-  if (t < 19 * 60 + 0) return 2
-  if (t < 19 * 60 + 15) return 3
-  if (t < 19 * 60 + 30) return 4
-  if (t < 19 * 60 + 45) return 5
-  return 6
-}
 
 function StandingsTable({ data, color }: { data: Standing[]; color: string }) {
   const cardStyle = { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }
@@ -93,22 +75,13 @@ function StandingsTable({ data, color }: { data: Standing[]; color: string }) {
 
 export default function ClassementPage() {
   const [standings, setStandings] = useState<Standings | null>(null)
-  const [currentMatches, setCurrentMatches] = useState<CurrentMatch[]>([])
   const [lastUpdate, setLastUpdate] = useState('')
-  const [rotation, setRotation] = useState(getCurrentRotation())
   const [activeTab, setActiveTab] = useState<'competiteurs' | 'intermediaires' | 'debutants'>('competiteurs')
 
   async function refresh() {
-    const rot = getCurrentRotation()
-    setRotation(rot)
-    const [sRes, mRes] = await Promise.all([
-      fetch('/api/classement'),
-      fetch(`/api/classement?rotation=${rot}`),
-    ])
-    const sData = await sRes.json()
-    const mData = await mRes.json()
-    setStandings(sData.standings)
-    setCurrentMatches(mData.matches || [])
+    const res = await fetch('/api/classement')
+    const data = await res.json()
+    setStandings(data.standings)
     setLastUpdate(new Date().toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' }))
   }
 
@@ -142,30 +115,6 @@ export default function ClassementPage() {
           ↻ Actualiser
         </button>
       </div>
-
-      {/* Matchs en cours */}
-      {currentMatches.length > 0 && (
-        <div className="mb-8">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#10b981' }} />
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Rotation {rotation} en cours</span>
-          </div>
-          <div className="flex flex-col gap-2">
-            {currentMatches.map(m => (
-              <div key={m.terrain} className="flex items-center justify-between px-4 py-3 rounded-xl" style={cardStyle}>
-                <div className="min-w-0">
-                  <span className="text-sm font-bold text-white">{m.terrain}</span>
-                  <p className="text-xs text-slate-500 truncate mt-0.5 max-w-[200px]">{m.equipe_a} · {m.equipe_b}</p>
-                </div>
-                {m.score_a !== null
-                  ? <span className="text-sm font-black ml-3 flex-shrink-0" style={{ color: '#10b981' }}>{m.score_a} – {m.score_b}</span>
-                  : <span className="text-xs text-slate-600 ml-3 flex-shrink-0">En cours…</span>
-                }
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Tabs */}
       <div className="flex gap-2 mb-5 overflow-x-auto pb-1">
