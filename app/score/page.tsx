@@ -4,15 +4,6 @@ import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
-const ROTATIONS = [
-  { numero: 1, horaire: '18h30 - 18h45' },
-  { numero: 2, horaire: '18h45 - 19h00' },
-  { numero: 3, horaire: '19h00 - 19h15' },
-  { numero: 4, horaire: '19h15 - 19h30' },
-  { numero: 5, horaire: '19h30 - 19h45' },
-  { numero: 6, horaire: '19h45 - 20h00' },
-]
-
 type Match = {
   id: number
   rotation: number
@@ -25,294 +16,229 @@ type Match = {
   score_b: number | null
 }
 
-type Step = 'rotation' | 'terrain' | 'confirm' | 'score' | 'done'
-
-function getCurrentRotation(): number {
-  const now = new Date()
-  const t = now.getHours() * 60 + now.getMinutes()
-  if (t < 18 * 60 + 30) return 1
-  if (t < 18 * 60 + 45) return 1
-  if (t < 19 * 60 + 0) return 2
-  if (t < 19 * 60 + 15) return 3
-  if (t < 19 * 60 + 30) return 4
-  if (t < 19 * 60 + 45) return 5
-  return 6
-}
-
-const GROUPE_EMOJI: Record<string, string> = {
-  'Compétiteurs': '🏆',
-  'Intermédiaires': '😜',
-  'Débutants': '🥉',
-}
-
 function ScorePageInner() {
   const searchParams = useSearchParams()
-  const terrainParam = searchParams.get('terrain')
+  const terrain = searchParams.get('terrain')
 
-  const [step, setStep] = useState<Step>(terrainParam ? 'confirm' : 'rotation')
-  const [rotation, setRotation] = useState<number>(getCurrentRotation())
-  const [matches, setMatches] = useState<Match[]>([])
-  const [selectedMatch, setSelectedMatch] = useState<Match | null>(null)
+  const [match, setMatch] = useState<Match | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [confirmed, setConfirmed] = useState(false)
   const [scoreA, setScoreA] = useState('')
   const [scoreB, setScoreB] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [done, setDone] = useState(false)
   const [nextMatch, setNextMatch] = useState<Match | null>(null)
-  const [error, setError] = useState('')
+  const [allDone, setAllDone] = useState(false)
 
   useEffect(() => {
-    if (terrainParam) {
-      const rot = getCurrentRotation()
-      setRotation(rot)
-      loadMatchForTerrain(terrainParam, rot)
-    }
-  }, [terrainParam])
+    if (terrain) loadCurrentMatch()
+  }, [terrain])
 
-  async function loadMatchForTerrain(terrain: string, rot: number) {
-    const res = await fetch(`/api/classement?rotation=${rot}`)
+  async function loadCurrentMatch() {
+    setLoading(true)
+    setConfirmed(false)
+    setDone(false)
+    setScoreA('')
+    setScoreB('')
+    // Cherche le premier match sans score pour ce terrain
+    const res = await fetch(`/api/score?terrain=${encodeURIComponent(terrain!)}`)
     const data = await res.json()
-    const all: Match[] = data.matches || []
-    const match = all.find(m => m.terrain === terrain)
-    if (match) {
-      setSelectedMatch(match)
-      setMatches(all)
+    if (data.match) {
+      setMatch(data.match)
+      setAllDone(false)
+    } else {
+      setMatch(null)
+      setAllDone(true)
     }
+    setLoading(false)
   }
 
-  async function loadMatches(rot: number) {
-    const res = await fetch(`/api/classement?rotation=${rot}`)
-    const data = await res.json()
-    setMatches(data.matches || [])
-    setRotation(rot)
-    setStep('terrain')
-  }
-
-  async function submitScore() {
-    if (!selectedMatch) return
+  async function submit() {
+    if (!match) return
     const sA = parseInt(scoreA)
     const sB = parseInt(scoreB)
-    if (isNaN(sA) || isNaN(sB) || sA < 0 || sB < 0) {
-      setError('Scores invalides')
-      return
-    }
+    if (isNaN(sA) || isNaN(sB)) return
     setSubmitting(true)
     const res = await fetch('/api/score', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'submit', matchId: selectedMatch.id, scoreA: sA, scoreB: sB }),
+      body: JSON.stringify({ action: 'submit', matchId: match.id, scoreA: sA, scoreB: sB }),
     })
     const data = await res.json()
     if (data.ok) {
       setNextMatch(data.nextMatch || null)
-      setStep('done')
-    } else {
-      setError(data.error || 'Erreur lors de la soumission')
+      setDone(true)
     }
     setSubmitting(false)
   }
 
-  function reset() {
-    setStep(terrainParam ? 'confirm' : 'rotation')
-    setScoreA(''); setScoreB(''); setNextMatch(null); setError('')
-    if (terrainParam) {
-      const rot = getCurrentRotation()
-      loadMatchForTerrain(terrainParam, rot)
-    }
+  if (!terrain) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
+        <p className="text-slate-400 text-lg mb-6">Scanne le QR code de ton terrain pour commencer.</p>
+        <Link href="/" className="text-yellow-400 underline">Retour à l'accueil</Link>
+      </div>
+    )
   }
 
-  return (
-    <div className="min-h-screen px-4 py-8 max-w-md mx-auto">
-      <div className="flex items-center gap-3 mb-8">
-        <Link href="/" className="text-slate-400 hover:text-white text-2xl">←</Link>
-        <h1 className="text-2xl font-bold">
-          {terrainParam ? `Terrain ${terrainParam}` : 'Entrer un score'}
-        </h1>
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-slate-400 text-xl">Chargement…</p>
       </div>
+    )
+  }
 
-      {/* Étape 1 : Rotation (mode global) */}
-      {step === 'rotation' && (
-        <div>
-          <p className="text-slate-400 mb-4">Sélectionne ta rotation :</p>
-          <div className="flex flex-col gap-3">
-            {ROTATIONS.map(r => (
-              <button
-                key={r.numero}
-                onClick={() => loadMatches(r.numero)}
-                className={`flex items-center justify-between px-5 py-4 rounded-xl font-semibold text-left transition-colors
-                  ${r.numero === getCurrentRotation()
-                    ? 'bg-yellow-400 text-slate-900'
-                    : 'bg-slate-700 hover:bg-slate-600'}`}
-              >
-                <span>Rotation {r.numero}</span>
-                <span className="text-sm font-normal opacity-80">{r.horaire}</span>
-                {r.numero === getCurrentRotation() && (
-                  <span className="text-xs bg-slate-900/30 px-2 py-0.5 rounded-full ml-2">EN COURS</span>
-                )}
-              </button>
-            ))}
+  if (allDone) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
+        <div className="text-6xl mb-4">🏆</div>
+        <h2 className="text-2xl font-bold mb-2">Tous les matchs terminés !</h2>
+        <p className="text-slate-400 mb-8">Terrain {terrain} — tous les scores sont enregistrés.</p>
+        <Link href="/classement" className="bg-yellow-400 hover:bg-yellow-300 text-slate-900 font-bold px-8 py-4 rounded-2xl text-lg">
+          Voir le classement
+        </Link>
+      </div>
+    )
+  }
+
+  // Écran de confirmation du score enregistré
+  if (done && match) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
+        <div className="text-6xl mb-4">✅</div>
+        <h2 className="text-2xl font-bold mb-6">Score enregistré !</h2>
+
+        <div className="w-full max-w-xs bg-slate-800 rounded-2xl p-6 mb-8">
+          <p className="text-slate-400 text-sm mb-4">{match.terrain} · {match.horaire}</p>
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-left text-sm flex-1">{match.equipe_a}</span>
+            <span className="text-3xl font-bold text-yellow-400 w-10 text-center">{scoreA}</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-left text-sm flex-1">{match.equipe_b}</span>
+            <span className="text-3xl font-bold text-yellow-400 w-10 text-center">{scoreB}</span>
           </div>
         </div>
-      )}
 
-      {/* Étape 2 : Terrain (mode global) */}
-      {step === 'terrain' && (
-        <div>
-          <p className="text-slate-400 mb-4">Rotation {rotation} · {ROTATIONS[rotation - 1].horaire}</p>
-          <div className="flex flex-col gap-3">
-            {matches.map(m => (
-              <button
-                key={m.id}
-                onClick={() => { setSelectedMatch(m); setStep('confirm') }}
-                disabled={m.score_a !== null}
-                className={`flex flex-col px-5 py-4 rounded-xl text-left transition-colors
-                  ${m.score_a !== null ? 'bg-slate-800 opacity-50 cursor-not-allowed' : 'bg-slate-700 hover:bg-slate-600'}`}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-bold text-yellow-400">{m.terrain}</span>
-                  <span className="text-sm text-slate-400">{GROUPE_EMOJI[m.groupe]}</span>
-                </div>
-                <p className="text-sm">{m.equipe_a}</p>
-                <p className="text-xs text-slate-400 my-0.5">vs</p>
-                <p className="text-sm">{m.equipe_b}</p>
-                {m.score_a !== null && (
-                  <p className="text-xs text-green-400 mt-1">✓ {m.score_a} - {m.score_b}</p>
-                )}
-              </button>
-            ))}
-          </div>
-          <button onClick={() => setStep('rotation')} className="mt-4 text-slate-400 hover:text-white text-sm">
-            ← Changer de rotation
-          </button>
-        </div>
-      )}
-
-      {/* Étape 3 : Confirmation du match */}
-      {step === 'confirm' && (
-        <div>
-          {selectedMatch ? (
-            <>
-              <p className="text-slate-400 mb-6 text-lg">C'est bien ton match ?</p>
-
-              <div className="bg-slate-800 rounded-2xl p-6 mb-8">
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="text-yellow-400 font-bold text-xl">{selectedMatch.terrain}</span>
-                  <span className="text-slate-500 text-sm">{selectedMatch.horaire}</span>
-                </div>
-
-                <div className="flex flex-col items-center gap-3">
-                  <div className="w-full bg-slate-700 rounded-xl px-4 py-3 text-center">
-                    <p className="font-semibold text-white">{selectedMatch.equipe_a}</p>
-                  </div>
-                  <span className="text-slate-400 font-bold text-lg">VS</span>
-                  <div className="w-full bg-slate-700 rounded-xl px-4 py-3 text-center">
-                    <p className="font-semibold text-white">{selectedMatch.equipe_b}</p>
-                  </div>
-                </div>
-
-                {selectedMatch.score_a !== null && (
-                  <p className="text-green-400 text-sm text-center mt-4">
-                    ✓ Score déjà enregistré : {selectedMatch.score_a} - {selectedMatch.score_b}
-                  </p>
-                )}
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setStep('score')}
-                  disabled={selectedMatch.score_a !== null}
-                  className="flex-1 bg-green-500 disabled:opacity-40 hover:bg-green-400 text-white font-bold py-5 rounded-2xl text-xl transition-colors"
-                >
-                  ✅ Oui
-                </button>
-                <button
-                  onClick={() => terrainParam ? setStep('rotation') : setStep('terrain')}
-                  className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-5 rounded-2xl text-xl transition-colors"
-                >
-                  ❌ Non
-                </button>
-              </div>
-            </>
-          ) : (
-            <p className="text-slate-400">Chargement du match…</p>
-          )}
-        </div>
-      )}
-
-      {/* Étape 4 : Saisie des scores */}
-      {step === 'score' && selectedMatch && (
-        <div>
-          <div className="bg-slate-800 rounded-xl p-4 mb-6">
-            <p className="text-yellow-400 font-bold">{selectedMatch.terrain} · {selectedMatch.horaire}</p>
-          </div>
-
-          <div className="flex flex-col gap-4 mb-6">
-            <div>
-              <label className="text-slate-300 text-sm mb-2 block font-medium">{selectedMatch.equipe_a}</label>
-              <input
-                type="number" inputMode="numeric" min={0}
-                value={scoreA} onChange={e => setScoreA(e.target.value)}
-                placeholder="0"
-                className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-4 text-4xl text-center font-bold focus:outline-none focus:border-yellow-400"
-              />
-            </div>
-            <div className="text-center text-slate-500 font-bold">VS</div>
-            <div>
-              <label className="text-slate-300 text-sm mb-2 block font-medium">{selectedMatch.equipe_b}</label>
-              <input
-                type="number" inputMode="numeric" min={0}
-                value={scoreB} onChange={e => setScoreB(e.target.value)}
-                placeholder="0"
-                className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-4 text-4xl text-center font-bold focus:outline-none focus:border-yellow-400"
-              />
-            </div>
-          </div>
-
-          {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
-          <button
-            onClick={submitScore}
-            disabled={submitting || scoreA === '' || scoreB === ''}
-            className="w-full bg-green-500 disabled:opacity-50 hover:bg-green-400 text-white font-bold py-4 rounded-xl text-lg transition-colors"
-          >
-            {submitting ? 'Envoi...' : 'Confirmer le score'}
-          </button>
-          <button onClick={() => setStep('confirm')} className="mt-3 w-full text-slate-400 hover:text-white text-sm py-2">
-            ← Retour
-          </button>
-        </div>
-      )}
-
-      {/* Étape 5 : Confirmation finale */}
-      {step === 'done' && selectedMatch && (
-        <div className="text-center">
-          <div className="text-6xl mb-4">✅</div>
-          <h2 className="text-2xl font-bold mb-2">Score enregistré !</h2>
-          <div className="bg-slate-800 rounded-xl p-4 mb-6 text-left">
-            <p className="text-yellow-400 font-bold mb-2">{selectedMatch.terrain}</p>
-            <p className="text-sm">{selectedMatch.equipe_a} <span className="text-yellow-400 font-bold text-lg ml-2">{scoreA}</span></p>
-            <p className="text-sm">{selectedMatch.equipe_b} <span className="text-yellow-400 font-bold text-lg ml-2">{scoreB}</span></p>
-          </div>
-
-          {nextMatch && (
-            <div className="bg-slate-800 rounded-xl p-4 mb-6 text-left">
-              <p className="text-slate-400 text-sm mb-2">Prochain match sur ce terrain :</p>
-              <p className="font-semibold">{nextMatch.equipe_a}</p>
-              <p className="text-slate-400 text-xs">vs</p>
+        {nextMatch ? (
+          <div className="w-full max-w-xs">
+            <p className="text-slate-400 mb-4">Prochain match sur ce terrain :</p>
+            <div className="bg-slate-800 rounded-2xl p-5 mb-6 text-left">
+              <p className="text-slate-400 text-xs mb-3">{nextMatch.horaire}</p>
+              <p className="font-semibold mb-1">{nextMatch.equipe_a}</p>
+              <p className="text-slate-500 text-sm mb-1">vs</p>
               <p className="font-semibold">{nextMatch.equipe_b}</p>
-              <p className="text-xs text-slate-500 mt-1">{nextMatch.horaire}</p>
             </div>
-          )}
-
-          <div className="flex flex-col gap-3">
-            <button onClick={reset} className="w-full bg-yellow-400 hover:bg-yellow-300 text-slate-900 font-bold py-4 rounded-xl text-lg transition-colors">
-              Entrer un autre score
+            <button
+              onClick={loadCurrentMatch}
+              className="w-full bg-yellow-400 hover:bg-yellow-300 text-slate-900 font-bold py-4 rounded-2xl text-lg transition-colors"
+            >
+              Entrer le score suivant
             </button>
-            <Link href="/classement" className="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-4 rounded-xl text-lg text-center transition-colors">
+          </div>
+        ) : (
+          <div className="w-full max-w-xs">
+            <p className="text-slate-400 mb-6">Plus de matchs sur ce terrain.</p>
+            <Link href="/classement" className="block w-full bg-yellow-400 hover:bg-yellow-300 text-slate-900 font-bold py-4 rounded-2xl text-lg text-center transition-colors">
               Voir le classement
             </Link>
           </div>
+        )}
+      </div>
+    )
+  }
+
+  // Écran de confirmation du match
+  if (!confirmed && match) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6">
+        <div className="w-full max-w-xs">
+          <p className="text-slate-400 text-center mb-2 text-sm">{match.terrain} · {match.horaire}</p>
+          <h2 className="text-2xl font-bold text-center mb-8">C'est bien ton match ?</h2>
+
+          <div className="bg-slate-800 rounded-2xl p-6 mb-8">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-full bg-slate-700 rounded-xl px-4 py-4 text-center">
+                <p className="font-semibold text-lg">{match.equipe_a}</p>
+              </div>
+              <p className="text-slate-500 font-bold">VS</p>
+              <div className="w-full bg-slate-700 rounded-xl px-4 py-4 text-center">
+                <p className="font-semibold text-lg">{match.equipe_b}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => setConfirmed(true)}
+              className="flex-1 bg-green-500 hover:bg-green-400 text-white font-bold py-5 rounded-2xl text-2xl transition-colors"
+            >
+              ✅
+            </button>
+            <button
+              onClick={() => window.history.back()}
+              className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-5 rounded-2xl text-2xl transition-colors"
+            >
+              ❌
+            </button>
+          </div>
         </div>
-      )}
-    </div>
-  )
+      </div>
+    )
+  }
+
+  // Écran de saisie des scores
+  if (confirmed && match) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6">
+        <div className="w-full max-w-xs">
+          <p className="text-slate-400 text-center text-sm mb-8">{match.terrain} · {match.horaire}</p>
+
+          <div className="flex flex-col gap-5 mb-8">
+            <div>
+              <p className="text-slate-300 text-sm mb-2 text-center">{match.equipe_a}</p>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                value={scoreA}
+                onChange={e => setScoreA(e.target.value)}
+                placeholder="0"
+                autoFocus
+                className="w-full bg-slate-800 border-2 border-slate-600 focus:border-yellow-400 rounded-2xl py-5 text-5xl font-bold text-center text-white focus:outline-none transition-colors"
+              />
+            </div>
+
+            <div className="text-center text-slate-500 font-bold text-lg">VS</div>
+
+            <div>
+              <p className="text-slate-300 text-sm mb-2 text-center">{match.equipe_b}</p>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                value={scoreB}
+                onChange={e => setScoreB(e.target.value)}
+                placeholder="0"
+                className="w-full bg-slate-800 border-2 border-slate-600 focus:border-yellow-400 rounded-2xl py-5 text-5xl font-bold text-center text-white focus:outline-none transition-colors"
+              />
+            </div>
+          </div>
+
+          <button
+            onClick={submit}
+            disabled={submitting || scoreA === '' || scoreB === ''}
+            className="w-full bg-yellow-400 disabled:opacity-40 hover:bg-yellow-300 text-slate-900 font-bold py-5 rounded-2xl text-xl transition-colors"
+          >
+            {submitting ? '…' : 'Valider'}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return null
 }
 
 export default function ScorePage() {
