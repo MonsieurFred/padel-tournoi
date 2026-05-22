@@ -32,7 +32,6 @@ function ScorePageInner() {
   const [ptsB, setPtsB] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
-  const [nextMatch, setNextMatch] = useState<Match | null>(null)
   const [allDone, setAllDone] = useState(false)
 
   useEffect(() => {
@@ -71,7 +70,6 @@ function ScorePageInner() {
     })
     const data = await res.json()
     if (data.ok) {
-      setNextMatch(data.nextMatch || null)
       setDone(true)
     }
     setSubmitting(false)
@@ -131,30 +129,11 @@ function ScorePageInner() {
           </div>
         </div>
 
-        {nextMatch ? (
-          <div className="w-full max-w-xs">
-            <p className="text-slate-400 mb-4">Prochain match sur ce terrain :</p>
-            <div className="bg-slate-800 rounded-2xl p-5 mb-6 text-left">
-              <p className="text-slate-400 text-xs mb-3">{nextMatch.horaire}</p>
-              <p className="font-semibold mb-1">{nextMatch.equipe_a}</p>
-              <p className="text-slate-500 text-sm mb-1">vs</p>
-              <p className="font-semibold">{nextMatch.equipe_b}</p>
-            </div>
-            <button
-              onClick={loadCurrentMatch}
-              className="w-full bg-yellow-400 hover:bg-yellow-300 text-slate-900 font-bold py-4 rounded-2xl text-lg transition-colors"
-            >
-              Entrer le score suivant
-            </button>
-          </div>
-        ) : (
-          <div className="w-full max-w-xs">
-            <p className="text-slate-400 mb-6">Plus de matchs sur ce terrain.</p>
-            <Link href="/classement" className="block w-full bg-yellow-400 hover:bg-yellow-300 text-slate-900 font-bold py-4 rounded-2xl text-lg text-center transition-colors">
-              Voir le classement
-            </Link>
-          </div>
-        )}
+        <div className="w-full max-w-xs">
+          <Link href="/classement" className="block w-full bg-yellow-400 hover:bg-yellow-300 text-slate-900 font-bold py-4 rounded-2xl text-lg text-center transition-colors">
+            Voir le classement
+          </Link>
+        </div>
       </div>
     )
   }
