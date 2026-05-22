@@ -232,6 +232,26 @@ export default function AdminDashboard() {
             </button>
           </div>
 
+          <div className="bg-red-950 border border-red-800 rounded-xl p-4 mb-4">
+            <h3 className="font-bold mb-2 text-red-400">🗑️ Réinitialiser tous les scores</h3>
+            <p className="text-slate-400 text-sm mb-4">
+              Remet tous les scores à zéro. À faire avant le tournoi pour repartir propre.
+            </p>
+            <button
+              onClick={async () => {
+                if (!confirm('Remettre TOUS les scores à zéro ? Cette action est irréversible.')) return
+                setSaving(true)
+                await fetch('/api/admin/reset', { method: 'POST' })
+                await load()
+                setSaving(false)
+              }}
+              disabled={saving}
+              className="w-full bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-bold py-3 rounded-xl transition-colors"
+            >
+              {saving ? '…' : 'Tout réinitialiser'}
+            </button>
+          </div>
+
           <div className="bg-slate-800 rounded-xl p-4">
             <h3 className="font-bold mb-2">ℹ️ Anomalie détectée</h3>
             <p className="text-slate-400 text-sm">

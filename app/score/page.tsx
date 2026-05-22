@@ -23,6 +23,7 @@ function ScorePageInner() {
   const [match, setMatch] = useState<Match | null>(null)
   const [loading, setLoading] = useState(true)
   const [confirmed, setConfirmed] = useState(false)
+  const [wrongTerrain, setWrongTerrain] = useState(false)
   const [scoreA, setScoreA] = useState('')
   const [scoreB, setScoreB] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -169,20 +170,28 @@ function ScorePageInner() {
             </div>
           </div>
 
-          <div className="flex gap-3">
-            <button
-              onClick={() => setConfirmed(true)}
-              className="flex-1 bg-green-500 hover:bg-green-400 text-white font-bold py-5 rounded-2xl text-2xl transition-colors"
-            >
-              ✅
-            </button>
-            <button
-              onClick={() => window.history.back()}
-              className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-5 rounded-2xl text-2xl transition-colors"
-            >
-              ❌
-            </button>
-          </div>
+          {wrongTerrain ? (
+            <div className="text-center bg-slate-800 rounded-2xl p-6">
+              <p className="text-2xl mb-3">📲</p>
+              <p className="text-white font-semibold mb-1">Scanne le QR code de ton terrain</p>
+              <p className="text-slate-400 text-sm">Chaque terrain a son propre QR code affiché sur place.</p>
+            </div>
+          ) : (
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmed(true)}
+                className="flex-1 bg-green-500 hover:bg-green-400 text-white font-bold py-5 rounded-2xl text-2xl transition-colors"
+              >
+                ✅
+              </button>
+              <button
+                onClick={() => setWrongTerrain(true)}
+                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-5 rounded-2xl text-2xl transition-colors"
+              >
+                ❌
+              </button>
+            </div>
+          )}
         </div>
       </div>
     )
