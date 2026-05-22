@@ -14,6 +14,8 @@ type Match = {
   equipe_b: string
   score_a: number | null
   score_b: number | null
+  points_a: number | null
+  points_b: number | null
 }
 
 type TerrainCode = { terrain: string; code: string }
@@ -33,6 +35,8 @@ export default function AdminDashboard() {
   const [editingMatch, setEditingMatch] = useState<Match | null>(null)
   const [editScoreA, setEditScoreA] = useState('')
   const [editScoreB, setEditScoreB] = useState('')
+  const [editPtsA, setEditPtsA] = useState('')
+  const [editPtsB, setEditPtsB] = useState('')
   const [editingCode, setEditingCode] = useState<string | null>(null)
   const [newCode, setNewCode] = useState('')
   const [saving, setSaving] = useState(false)
@@ -56,10 +60,12 @@ export default function AdminDashboard() {
     setSaving(true)
     const sA = editScoreA === '' ? null : parseInt(editScoreA)
     const sB = editScoreB === '' ? null : parseInt(editScoreB)
+    const pA = editPtsA === '' ? null : parseInt(editPtsA)
+    const pB = editPtsB === '' ? null : parseInt(editPtsB)
     await fetch('/api/admin/score', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ matchId: editingMatch.id, scoreA: sA, scoreB: sB }),
+      body: JSON.stringify({ matchId: editingMatch.id, scoreA: sA, scoreB: sB, pointsA: pA, pointsB: pB }),
     })
     await load()
     setEditingMatch(null)
@@ -153,20 +159,25 @@ export default function AdminDashboard() {
                   <div>
                     <p className="text-yellow-400 font-bold mb-2">{m.terrain} · R{m.rotation}</p>
                     <p className="text-sm mb-3">{m.equipe_a} vs {m.equipe_b}</p>
-                    <div className="flex gap-3 items-center mb-3">
-                      <input
-                        type="number" min={0} value={editScoreA}
-                        onChange={e => setEditScoreA(e.target.value)}
-                        placeholder="Score A"
-                        className="flex-1 bg-slate-700 rounded-lg px-3 py-2 text-center text-xl focus:outline-none"
-                      />
-                      <span className="text-slate-400">-</span>
-                      <input
-                        type="number" min={0} value={editScoreB}
-                        onChange={e => setEditScoreB(e.target.value)}
-                        placeholder="Score B"
-                        className="flex-1 bg-slate-700 rounded-lg px-3 py-2 text-center text-xl focus:outline-none"
-                      />
+                    <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center mb-1">
+                      <input type="number" min={0} value={editScoreA} onChange={e => setEditScoreA(e.target.value)} placeholder="Jeux A"
+                        className="bg-slate-700 rounded-lg px-2 py-2 text-center text-lg focus:outline-none w-full" />
+                      <span className="text-slate-400 text-center">-</span>
+                      <input type="number" min={0} value={editScoreB} onChange={e => setEditScoreB(e.target.value)} placeholder="Jeux B"
+                        className="bg-slate-700 rounded-lg px-2 py-2 text-center text-lg focus:outline-none w-full" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs text-slate-500 text-center mb-1">
+                      <span>jeux</span><span>jeux</span>
+                    </div>
+                    <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center mb-1">
+                      <input type="number" min={0} value={editPtsA} onChange={e => setEditPtsA(e.target.value)} placeholder="Pts A"
+                        className="bg-slate-700 rounded-lg px-2 py-2 text-center text-lg focus:outline-none w-full" />
+                      <span className="text-slate-400 text-center">-</span>
+                      <input type="number" min={0} value={editPtsB} onChange={e => setEditPtsB(e.target.value)} placeholder="Pts B"
+                        className="bg-slate-700 rounded-lg px-2 py-2 text-center text-lg focus:outline-none w-full" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs text-slate-500 text-center mb-3">
+                      <span>points</span><span>points</span>
                     </div>
                     <div className="flex gap-2">
                       <button onClick={saveScore} disabled={saving} className="flex-1 bg-green-500 hover:bg-green-400 text-white font-bold py-2 rounded-lg">
@@ -187,14 +198,17 @@ export default function AdminDashboard() {
                       <p className="text-xs text-slate-300 truncate max-w-[220px]">{m.equipe_a} vs {m.equipe_b}</p>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className={`font-bold ${m.score_a !== null ? 'text-green-400' : 'text-slate-500'}`}>
-                        {m.score_a !== null ? `${m.score_a} - ${m.score_b}` : '— - —'}
-                      </span>
+                      <div className={`text-right ${m.score_a !== null ? 'text-green-400' : 'text-slate-500'}`}>
+                        <div className="font-bold">{m.score_a !== null ? `${m.score_a} - ${m.score_b}` : '— - —'}</div>
+                        {m.score_a !== null && <div className="text-xs text-slate-400">{m.points_a} - {m.points_b} pts</div>}
+                      </div>
                       <button
                         onClick={() => {
                           setEditingMatch(m)
                           setEditScoreA(m.score_a?.toString() ?? '')
                           setEditScoreB(m.score_b?.toString() ?? '')
+                          setEditPtsA(m.points_a?.toString() ?? '')
+                          setEditPtsB(m.points_b?.toString() ?? '')
                         }}
                         className="text-slate-400 hover:text-yellow-400 text-lg"
                       >

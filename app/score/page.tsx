@@ -14,6 +14,8 @@ type Match = {
   equipe_b: string
   score_a: number | null
   score_b: number | null
+  points_a: number | null
+  points_b: number | null
 }
 
 function ScorePageInner() {
@@ -24,8 +26,10 @@ function ScorePageInner() {
   const [loading, setLoading] = useState(true)
   const [confirmed, setConfirmed] = useState(false)
   const [wrongTerrain, setWrongTerrain] = useState(false)
-  const [scoreA, setScoreA] = useState('')
-  const [scoreB, setScoreB] = useState('')
+  const [jeuxA, setJeuxA] = useState('')
+  const [jeuxB, setJeuxB] = useState('')
+  const [ptsA, setPtsA] = useState('')
+  const [ptsB, setPtsB] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
   const [nextMatch, setNextMatch] = useState<Match | null>(null)
@@ -39,9 +43,7 @@ function ScorePageInner() {
     setLoading(true)
     setConfirmed(false)
     setDone(false)
-    setScoreA('')
-    setScoreB('')
-    // Cherche le premier match sans score pour ce terrain
+    setJeuxA(''); setJeuxB(''); setPtsA(''); setPtsB('')
     const res = await fetch(`/api/score?terrain=${encodeURIComponent(terrain!)}`)
     const data = await res.json()
     if (data.match) {
@@ -56,14 +58,16 @@ function ScorePageInner() {
 
   async function submit() {
     if (!match) return
-    const sA = parseInt(scoreA)
-    const sB = parseInt(scoreB)
-    if (isNaN(sA) || isNaN(sB)) return
+    const jA = parseInt(jeuxA)
+    const jB = parseInt(jeuxB)
+    const pA = parseInt(ptsA)
+    const pB = parseInt(ptsB)
+    if (isNaN(jA) || isNaN(jB) || isNaN(pA) || isNaN(pB)) return
     setSubmitting(true)
     const res = await fetch('/api/score', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'submit', matchId: match.id, scoreA: sA, scoreB: sB }),
+      body: JSON.stringify({ action: 'submit', matchId: match.id, scoreA: jA, scoreB: jB, pointsA: pA, pointsB: pB }),
     })
     const data = await res.json()
     if (data.ok) {
@@ -103,7 +107,6 @@ function ScorePageInner() {
     )
   }
 
-  // Écran de confirmation du score enregistré
   if (done && match) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
@@ -112,13 +115,19 @@ function ScorePageInner() {
 
         <div className="w-full max-w-xs bg-slate-800 rounded-2xl p-6 mb-8">
           <p className="text-slate-400 text-sm mb-4">{match.terrain} · {match.horaire}</p>
-          <div className="flex justify-between items-center mb-2">
+          <div className="flex justify-between items-center mb-3">
             <span className="text-left text-sm flex-1">{match.equipe_a}</span>
-            <span className="text-3xl font-bold text-yellow-400 w-10 text-center">{scoreA}</span>
+            <div className="flex items-center gap-2 ml-2">
+              <span className="text-3xl font-bold text-yellow-400">{jeuxA}</span>
+              <span className="text-slate-500 text-sm">({ptsA} pts)</span>
+            </div>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-left text-sm flex-1">{match.equipe_b}</span>
-            <span className="text-3xl font-bold text-yellow-400 w-10 text-center">{scoreB}</span>
+            <div className="flex items-center gap-2 ml-2">
+              <span className="text-3xl font-bold text-yellow-400">{jeuxB}</span>
+              <span className="text-slate-500 text-sm">({ptsB} pts)</span>
+            </div>
           </div>
         </div>
 
@@ -150,7 +159,6 @@ function ScorePageInner() {
     )
   }
 
-  // Écran de confirmation du match
   if (!confirmed && match) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6">
@@ -197,47 +205,63 @@ function ScorePageInner() {
     )
   }
 
-  // Écran de saisie des scores
   if (confirmed && match) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6">
         <div className="w-full max-w-xs">
-          <p className="text-slate-400 text-center text-sm mb-8">{match.terrain} · {match.horaire}</p>
+          <p className="text-slate-400 text-center text-sm mb-6">{match.terrain} · {match.horaire}</p>
 
-          <div className="flex flex-col gap-5 mb-8">
-            <div>
-              <p className="text-slate-300 text-sm mb-2 text-center">{match.equipe_a}</p>
+          {/* Équipe A */}
+          <p className="text-slate-300 text-sm mb-2 text-center">{match.equipe_a}</p>
+          <div className="flex gap-3 mb-6">
+            <div className="flex-1">
               <input
-                type="number"
-                inputMode="numeric"
-                min={0}
-                value={scoreA}
-                onChange={e => setScoreA(e.target.value)}
-                placeholder="0"
-                autoFocus
-                className="w-full bg-slate-800 border-2 border-slate-600 focus:border-yellow-400 rounded-2xl py-5 text-5xl font-bold text-center text-white focus:outline-none transition-colors"
+                type="number" inputMode="numeric" min={0}
+                value={jeuxA} onChange={e => setJeuxA(e.target.value)}
+                placeholder="0" autoFocus
+                className="w-full bg-slate-800 border-2 border-slate-600 focus:border-yellow-400 rounded-2xl py-5 text-4xl font-bold text-center text-white focus:outline-none transition-colors"
               />
+              <p className="text-center text-slate-500 text-xs mt-1">jeux</p>
             </div>
-
-            <div className="text-center text-slate-500 font-bold text-lg">VS</div>
-
-            <div>
-              <p className="text-slate-300 text-sm mb-2 text-center">{match.equipe_b}</p>
+            <div className="flex-1">
               <input
-                type="number"
-                inputMode="numeric"
-                min={0}
-                value={scoreB}
-                onChange={e => setScoreB(e.target.value)}
+                type="number" inputMode="numeric" min={0}
+                value={ptsA} onChange={e => setPtsA(e.target.value)}
                 placeholder="0"
-                className="w-full bg-slate-800 border-2 border-slate-600 focus:border-yellow-400 rounded-2xl py-5 text-5xl font-bold text-center text-white focus:outline-none transition-colors"
+                className="w-full bg-slate-800 border-2 border-slate-600 focus:border-yellow-400 rounded-2xl py-5 text-4xl font-bold text-center text-white focus:outline-none transition-colors"
               />
+              <p className="text-center text-slate-500 text-xs mt-1">points</p>
+            </div>
+          </div>
+
+          <div className="text-center text-slate-500 font-bold text-lg mb-6">VS</div>
+
+          {/* Équipe B */}
+          <p className="text-slate-300 text-sm mb-2 text-center">{match.equipe_b}</p>
+          <div className="flex gap-3 mb-8">
+            <div className="flex-1">
+              <input
+                type="number" inputMode="numeric" min={0}
+                value={jeuxB} onChange={e => setJeuxB(e.target.value)}
+                placeholder="0"
+                className="w-full bg-slate-800 border-2 border-slate-600 focus:border-yellow-400 rounded-2xl py-5 text-4xl font-bold text-center text-white focus:outline-none transition-colors"
+              />
+              <p className="text-center text-slate-500 text-xs mt-1">jeux</p>
+            </div>
+            <div className="flex-1">
+              <input
+                type="number" inputMode="numeric" min={0}
+                value={ptsB} onChange={e => setPtsB(e.target.value)}
+                placeholder="0"
+                className="w-full bg-slate-800 border-2 border-slate-600 focus:border-yellow-400 rounded-2xl py-5 text-4xl font-bold text-center text-white focus:outline-none transition-colors"
+              />
+              <p className="text-center text-slate-500 text-xs mt-1">points</p>
             </div>
           </div>
 
           <button
             onClick={submit}
-            disabled={submitting || scoreA === '' || scoreB === ''}
+            disabled={submitting || jeuxA === '' || jeuxB === '' || ptsA === '' || ptsB === ''}
             className="w-full bg-yellow-400 disabled:opacity-40 hover:bg-yellow-300 text-slate-900 font-bold py-5 rounded-2xl text-xl transition-colors"
           >
             {submitting ? '…' : 'Valider'}

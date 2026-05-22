@@ -13,10 +13,10 @@ export async function verifyTerrainCode(terrain: string, code: string): Promise<
   return rows.length > 0 && rows[0].code === code
 }
 
-export async function submitScore(matchId: number, scoreA: number, scoreB: number) {
+export async function submitScore(matchId: number, scoreA: number, scoreB: number, pointsA: number, pointsB: number) {
   await sql`
     UPDATE matches
-    SET score_a = ${scoreA}, score_b = ${scoreB}, updated_at = NOW()
+    SET score_a = ${scoreA}, score_b = ${scoreB}, points_a = ${pointsA}, points_b = ${pointsB}, updated_at = NOW()
     WHERE id = ${matchId}
   `
 }
@@ -51,10 +51,10 @@ export async function isAdminAuthenticated(): Promise<boolean> {
 
 // ── Admin actions ──────────────────────────────────────────────────────────
 
-export async function adminUpdateScore(matchId: number, scoreA: number | null, scoreB: number | null) {
+export async function adminUpdateScore(matchId: number, scoreA: number | null, scoreB: number | null, pointsA: number | null, pointsB: number | null) {
   await sql`
     UPDATE matches
-    SET score_a = ${scoreA}, score_b = ${scoreB}, updated_at = NOW()
+    SET score_a = ${scoreA}, score_b = ${scoreB}, points_a = ${pointsA}, points_b = ${pointsB}, updated_at = NOW()
     WHERE id = ${matchId}
   `
 }
@@ -99,7 +99,7 @@ export async function getAllMatches() {
 
 export async function getStandings() {
   const matches = await sql`
-    SELECT equipe_a, equipe_b, score_a, score_b, groupe
+    SELECT equipe_a, equipe_b, score_a, score_b, points_a, points_b, groupe
     FROM matches
     WHERE score_a IS NOT NULL AND score_b IS NOT NULL
   `
@@ -118,7 +118,6 @@ export async function getStandings() {
 
   const map = new Map<string, Standing>()
 
-  // Équipes classées par groupe (pour éviter que Marianne/Patrice compte double)
   const groupeMap: Record<string, string> = {
     'Poulain / Sandrina Graceffa': 'Compétiteurs',
     'Collin Mathieu / Didier Baele': 'Compétiteurs',
@@ -142,33 +141,38 @@ export async function getStandings() {
   }
 
   const ensure = (equipe: string, groupe: string) => {
-    // Normalise le nom du joueur volant
-    const key = equipe.startsWith('Joueur volant') ? equipe : equipe
     const resolvedGroupe = groupeMap[equipe] || groupe
-    if (!map.has(key)) {
-      map.set(key, { equipe: key, groupe: resolvedGroupe, joue: 0, victoires: 0, nuls: 0, defaites: 0, points: 0, jeuxPlus: 0, jeuxMoins: 0 })
+    if (!map.has(equipe)) {
+      map.set(equipe, { equipe, groupe: resolvedGroupe, joue: 0, victoires: 0, nuls: 0, defaites: 0, points: 0, jeuxPlus: 0, jeuxMoins: 0 })
     }
-    return map.get(key)!
+    return map.get(equipe)!
   }
 
   for (const m of matches) {
-    const sA = Number(m.score_a)
-    const sB = Number(m.score_b)
+    const jA = Number(m.score_a)
+    const jB = Number(m.score_b)
+    const pA = m.points_a !== null ? Number(m.points_a) : 0
+    const pB = m.points_b !== null ? Number(m.points_b) : 0
     const groupe = m.groupe as string
 
     const a = ensure(m.equipe_a as string, groupe)
     const b = ensure(m.equipe_b as string, groupe)
 
     a.joue++; b.joue++
-    a.jeuxPlus += sA; a.jeuxMoins += sB
-    b.jeuxPlus += sB; b.jeuxMoins += sA
+    a.jeuxPlus += jA; a.jeuxMoins += jB
+    b.jeuxPlus += jB; b.jeuxMoins += jA
 
-    if (sA > sB) {
-      a.victoires++; a.points++
-      b.defaites++
-    } else if (sB > sA) {
-      b.victoires++; b.points++
-      a.defaites++
+    // Jeux décident ; si égalité jeux → points départagent ; sinon nul
+    let aWins = false, bWins = false
+    if (jA > jB) aWins = true
+    else if (jB > jA) bWins = true
+    else if (pA > pB) aWins = true
+    else if (pB > pA) bWins = true
+
+    if (aWins) {
+      a.victoires++; a.points++; b.defaites++
+    } else if (bWins) {
+      b.victoires++; b.points++; a.defaites++
     } else {
       a.nuls++; a.points += 0.5
       b.nuls++; b.points += 0.5

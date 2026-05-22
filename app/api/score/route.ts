@@ -21,8 +21,8 @@ export async function POST(request: NextRequest) {
   const body = await request.json()
 
   if (body.action === 'submit') {
-    const { matchId, scoreA, scoreB } = body
-    await submitScore(matchId, scoreA, scoreB)
+    const { matchId, scoreA, scoreB, pointsA, pointsB } = body
+    await submitScore(matchId, scoreA, scoreB, pointsA, pointsB)
 
     // Cherche le match actuel pour obtenir le terrain
     const rows = await sql`SELECT terrain, rotation FROM matches WHERE id = ${matchId}`

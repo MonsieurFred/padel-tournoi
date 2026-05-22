@@ -6,6 +6,6 @@ export async function POST() {
   if (cookieStore.get('admin_token')?.value !== process.env.ADMIN_PASSWORD) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
-  await sql`UPDATE matches SET score_a = NULL, score_b = NULL, updated_at = NOW()`
+  await sql`UPDATE matches SET score_a = NULL, score_b = NULL, points_a = NULL, points_b = NULL, updated_at = NOW()`
   return Response.json({ ok: true })
 }

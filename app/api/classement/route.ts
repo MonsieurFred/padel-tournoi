@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
 
   if (rotation) {
     const matches = await sql`
-      SELECT id, rotation, horaire, groupe, terrain, equipe_a, equipe_b, score_a, score_b
+      SELECT id, rotation, horaire, groupe, terrain, equipe_a, equipe_b, score_a, score_b, points_a, points_b
       FROM matches
       WHERE rotation = ${parseInt(rotation)}
       ORDER BY groupe, terrain
