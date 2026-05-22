@@ -14,7 +14,9 @@ export async function GET(request: NextRequest) {
     ORDER BY rotation ASC
     LIMIT 1
   `
-  return Response.json({ match: rows[0] || null })
+  return Response.json({ match: rows[0] || null }, {
+    headers: { 'Cache-Control': 'no-store' }
+  })
 }
 
 export async function POST(request: NextRequest) {

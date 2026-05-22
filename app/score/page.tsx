@@ -43,7 +43,7 @@ function ScorePageInner() {
     setConfirmed(false)
     setDone(false)
     setJeuxA(''); setJeuxB(''); setPtsA(''); setPtsB('')
-    const res = await fetch(`/api/score?terrain=${encodeURIComponent(terrain!)}`)
+    const res = await fetch(`/api/score?terrain=${encodeURIComponent(terrain!)}`, { cache: 'no-store' })
     const data = await res.json()
     if (data.match) {
       setMatch(data.match)
