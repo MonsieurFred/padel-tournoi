@@ -117,10 +117,10 @@ export default function ClassementPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-5 overflow-x-auto pb-1">
+      <div className="grid grid-cols-3 gap-2 mb-5">
         {GROUPES.map(g => (
           <button key={g.key} onClick={() => setActiveTab(g.key)}
-            className="flex-shrink-0 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+            className="py-2.5 rounded-xl text-xs font-bold transition-all text-center leading-tight"
             style={activeTab === g.key
               ? { background: g.color, color: '#fff' }
               : { background: 'rgba(255,255,255,0.07)', color: '#94a3b8' }}>
