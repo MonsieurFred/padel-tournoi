@@ -20,11 +20,17 @@ type Match = {
 
 type TerrainCode = { terrain: string; code: string }
 
-const GROUPE_EMOJI: Record<string, string> = {
-  'Compétiteurs': '🏆',
-  'Intermédiaires': '😜',
-  'Débutants': '🥉',
+const GROUPES = ['Compétiteurs', 'Intermédiaires', 'Débutants'] as const
+type Groupe = typeof GROUPES[number]
+
+const GROUPE_COLOR: Record<Groupe, string> = {
+  'Compétiteurs': '#f59e0b',
+  'Intermédiaires': '#10b981',
+  'Débutants': '#6366f1',
 }
+
+const card = { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }
+const inputCls = 'w-full rounded-lg px-3 py-2 text-center text-lg focus:outline-none bg-transparent border border-white/10 focus:border-white/30 text-white'
 
 export default function AdminDashboard() {
   const router = useRouter()
@@ -37,11 +43,10 @@ export default function AdminDashboard() {
   const [editScoreB, setEditScoreB] = useState('')
   const [editPtsA, setEditPtsA] = useState('')
   const [editPtsB, setEditPtsB] = useState('')
-  const [editingCode, setEditingCode] = useState<string | null>(null)
-  const [newCode, setNewCode] = useState('')
   const [saving, setSaving] = useState(false)
   const [tab, setTab] = useState<'scores' | 'settings'>('scores')
-  const [filterRotation, setFilterRotation] = useState<number | null>(null)
+  const [filterGroupe, setFilterGroupe] = useState<Groupe | null>(null)
+  const [filterRound, setFilterRound] = useState<number | null>(null)
 
   async function load() {
     const res = await fetch('/api/admin/data')
@@ -72,19 +77,6 @@ export default function AdminDashboard() {
     setSaving(false)
   }
 
-  async function saveCode() {
-    if (!editingCode) return
-    setSaving(true)
-    await fetch('/api/admin/code', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ terrain: editingCode, code: newCode }),
-    })
-    await load()
-    setEditingCode(null)
-    setSaving(false)
-  }
-
   async function saveJoueurVolant() {
     setSaving(true)
     await fetch('/api/admin/joueur-volant', {
@@ -101,176 +93,201 @@ export default function AdminDashboard() {
     router.push('/')
   }
 
-  const filtered = filterRotation ? matches.filter(m => m.rotation === filterRotation) : matches
-  const rotations = [...new Set(matches.map(m => m.rotation))].sort()
+  const rounds = [...new Set(matches.map(m => m.rotation))].sort()
+  const filtered = matches.filter(m => {
+    if (filterGroupe && m.groupe !== filterGroupe) return false
+    if (filterRound && m.rotation !== filterRound) return false
+    return true
+  })
+  const scored = filtered.filter(m => m.score_a !== null).length
 
   return (
-    <div className="min-h-screen px-4 py-6 max-w-2xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+    <div className="min-h-screen px-4 py-6 max-w-2xl mx-auto" style={{ background: '#0a0f1e' }}>
+
+      {/* Header */}
+      <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <Link href="/" className="text-slate-400 hover:text-white text-2xl">←</Link>
-          <h1 className="text-2xl font-bold">Admin</h1>
+          <Link href="/" className="flex items-center justify-center w-9 h-9 rounded-xl text-slate-400 hover:text-white transition-colors"
+            style={{ background: 'rgba(255,255,255,0.07)' }}>←</Link>
+          <h1 className="text-xl font-bold">Admin</h1>
         </div>
-        <button onClick={logout} className="text-slate-400 hover:text-white text-sm">
-          Déconnexion
-        </button>
+        <button onClick={logout} className="text-sm text-slate-500 hover:text-white transition-colors">Déconnexion</button>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-6">
+      <div className="grid grid-cols-2 gap-2 mb-8">
         {(['scores', 'settings'] as const).map(t => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-              tab === t ? 'bg-yellow-400 text-slate-900' : 'bg-slate-700 hover:bg-slate-600'
-            }`}
-          >
+          <button key={t} onClick={() => setTab(t)}
+            className="py-3 rounded-xl text-sm font-bold transition-all"
+            style={tab === t
+              ? { background: '#10b981', color: '#fff' }
+              : { background: 'rgba(255,255,255,0.06)', color: '#64748b', border: '1px solid rgba(255,255,255,0.08)' }}>
             {t === 'scores' ? '📊 Scores' : '⚙️ Paramètres'}
           </button>
         ))}
       </div>
 
-      {/* Onglet Scores */}
+      {/* ── SCORES ── */}
       {tab === 'scores' && (
         <div>
-          <div className="flex gap-2 mb-4 flex-wrap">
-            <button
-              onClick={() => setFilterRotation(null)}
-              className={`px-3 py-1 rounded-lg text-sm ${!filterRotation ? 'bg-yellow-400 text-slate-900' : 'bg-slate-700'}`}
-            >
-              Toutes
-            </button>
-            {rotations.map(r => (
-              <button
-                key={r}
-                onClick={() => setFilterRotation(r)}
-                className={`px-3 py-1 rounded-lg text-sm ${filterRotation === r ? 'bg-yellow-400 text-slate-900' : 'bg-slate-700'}`}
-              >
-                R{r}
+          {/* Filtres groupe */}
+          <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">Niveau</p>
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            {GROUPES.map(g => (
+              <button key={g} onClick={() => { setFilterGroupe(filterGroupe === g ? null : g); setFilterRound(null) }}
+                className="py-2.5 rounded-xl text-xs font-bold transition-all"
+                style={filterGroupe === g
+                  ? { background: GROUPE_COLOR[g], color: '#fff' }
+                  : { background: 'rgba(255,255,255,0.06)', color: '#64748b', border: '1px solid rgba(255,255,255,0.08)' }}>
+                {g}
               </button>
             ))}
           </div>
 
-          <div className="flex flex-col gap-3">
-            {filtered.map(m => (
-              <div key={m.id} className="bg-slate-800 rounded-xl px-4 py-3">
-                {editingMatch?.id === m.id ? (
-                  <div>
-                    <p className="text-yellow-400 font-bold mb-2">{m.terrain} · Round {m.rotation}</p>
-                    <p className="text-sm mb-3">{m.equipe_a} vs {m.equipe_b}</p>
-                    <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center mb-1">
-                      <input type="number" min={0} value={editScoreA} onChange={e => setEditScoreA(e.target.value)} placeholder="Jeux A"
-                        className="bg-slate-700 rounded-lg px-2 py-2 text-center text-lg focus:outline-none w-full" />
-                      <span className="text-slate-400 text-center">-</span>
-                      <input type="number" min={0} value={editScoreB} onChange={e => setEditScoreB(e.target.value)} placeholder="Jeux B"
-                        className="bg-slate-700 rounded-lg px-2 py-2 text-center text-lg focus:outline-none w-full" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-xs text-slate-500 text-center mb-1">
-                      <span>jeux</span><span>jeux</span>
-                    </div>
-                    <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center mb-1">
-                      <input type="number" min={0} value={editPtsA} onChange={e => setEditPtsA(e.target.value)} placeholder="Pts A"
-                        className="bg-slate-700 rounded-lg px-2 py-2 text-center text-lg focus:outline-none w-full" />
-                      <span className="text-slate-400 text-center">-</span>
-                      <input type="number" min={0} value={editPtsB} onChange={e => setEditPtsB(e.target.value)} placeholder="Pts B"
-                        className="bg-slate-700 rounded-lg px-2 py-2 text-center text-lg focus:outline-none w-full" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-xs text-slate-500 text-center mb-3">
-                      <span>points</span><span>points</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={saveScore} disabled={saving} className="flex-1 bg-green-500 hover:bg-green-400 text-white font-bold py-2 rounded-lg">
-                        {saving ? '…' : 'Sauvegarder'}
-                      </button>
-                      <button onClick={() => setEditingMatch(null)} className="flex-1 bg-slate-700 hover:bg-slate-600 py-2 rounded-lg text-sm">
-                        Annuler
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between">
+          {/* Filtres round */}
+          <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">Round</p>
+          <div className="flex gap-2 mb-6 flex-wrap">
+            <button onClick={() => setFilterRound(null)}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+              style={!filterRound
+                ? { background: 'rgba(255,255,255,0.15)', color: '#fff' }
+                : { background: 'rgba(255,255,255,0.06)', color: '#64748b', border: '1px solid rgba(255,255,255,0.08)' }}>
+              Tous
+            </button>
+            {rounds.map(r => (
+              <button key={r} onClick={() => setFilterRound(filterRound === r ? null : r)}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                style={filterRound === r
+                  ? { background: 'rgba(255,255,255,0.15)', color: '#fff' }
+                  : { background: 'rgba(255,255,255,0.06)', color: '#64748b', border: '1px solid rgba(255,255,255,0.08)' }}>
+                Round {r}
+              </button>
+            ))}
+          </div>
+
+          {/* Compteur */}
+          <p className="text-xs text-slate-600 mb-3">{scored}/{filtered.length} matchs encodés</p>
+
+          {/* Liste */}
+          <div className="flex flex-col gap-2">
+            {filtered.map(m => {
+              const color = GROUPE_COLOR[m.groupe as Groupe] ?? '#94a3b8'
+              const isEditing = editingMatch?.id === m.id
+              return (
+                <div key={m.id} className="rounded-xl p-4" style={card}>
+                  {isEditing ? (
                     <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-yellow-400 font-bold text-sm">{m.terrain}</span>
-                        <span className="text-slate-500 text-xs">Round {m.rotation} · {GROUPE_EMOJI[m.groupe]}</span>
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: `${color}22`, color }}>{m.groupe}</span>
+                        <span className="text-xs text-slate-500">{m.terrain} · Round {m.rotation}</span>
                       </div>
-                      <p className="text-xs text-slate-300 truncate max-w-[220px]">{m.equipe_a} vs {m.equipe_b}</p>
+                      <p className="text-sm font-medium mb-4">{m.equipe_a} <span className="text-slate-500">vs</span> {m.equipe_b}</p>
+
+                      <div className="grid grid-cols-2 gap-3 mb-2">
+                        <div>
+                          <p className="text-xs text-slate-500 mb-1 text-center">{m.equipe_a.split('/')[0].trim()}</p>
+                          <input type="number" min={0} value={editScoreA} onChange={e => setEditScoreA(e.target.value)}
+                            placeholder="Jeux" className={inputCls} />
+                          <p className="text-xs text-slate-600 text-center mt-1">jeux</p>
+                          <input type="number" min={0} value={editPtsA} onChange={e => setEditPtsA(e.target.value)}
+                            placeholder="0/15/30/40" className={`${inputCls} mt-1`} />
+                          <p className="text-xs text-slate-600 text-center mt-1">points</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500 mb-1 text-center">{m.equipe_b.split('/')[0].trim()}</p>
+                          <input type="number" min={0} value={editScoreB} onChange={e => setEditScoreB(e.target.value)}
+                            placeholder="Jeux" className={inputCls} />
+                          <p className="text-xs text-slate-600 text-center mt-1">jeux</p>
+                          <input type="number" min={0} value={editPtsB} onChange={e => setEditPtsB(e.target.value)}
+                            placeholder="0/15/30/40" className={`${inputCls} mt-1`} />
+                          <p className="text-xs text-slate-600 text-center mt-1">points</p>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 mt-4">
+                        <button onClick={saveScore} disabled={saving}
+                          className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all"
+                          style={{ background: '#10b981', color: '#fff' }}>
+                          {saving ? '…' : 'Sauvegarder'}
+                        </button>
+                        <button onClick={() => setEditingMatch(null)}
+                          className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all"
+                          style={{ background: 'rgba(255,255,255,0.06)', color: '#64748b' }}>
+                          Annuler
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className={`text-right ${m.score_a !== null ? 'text-green-400' : 'text-slate-500'}`}>
-                        <div className="font-bold">{m.score_a !== null ? `${m.score_a} - ${m.score_b}` : '— - —'}</div>
-                        {m.score_a !== null && <div className="text-xs text-slate-400">{m.points_a} - {m.points_b} pts</div>}
+                  ) : (
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: `${color}22`, color }}>{m.groupe}</span>
+                          <span className="text-xs text-slate-500 flex-shrink-0">R{m.rotation} · {m.terrain}</span>
+                        </div>
+                        <p className="text-sm text-slate-300 truncate">{m.equipe_a} <span className="text-slate-600">vs</span> {m.equipe_b}</p>
                       </div>
-                      <button
-                        onClick={() => {
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        {m.score_a !== null ? (
+                          <div className="text-right">
+                            <p className="text-sm font-black" style={{ color: '#10b981' }}>{m.score_a} – {m.score_b}</p>
+                            <p className="text-xs text-slate-500">{m.points_a} – {m.points_b} pts</p>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-600">—</span>
+                        )}
+                        <button onClick={() => {
                           setEditingMatch(m)
                           setEditScoreA(m.score_a?.toString() ?? '')
                           setEditScoreB(m.score_b?.toString() ?? '')
                           setEditPtsA(m.points_a?.toString() ?? '')
                           setEditPtsB(m.points_b?.toString() ?? '')
-                        }}
-                        className="text-slate-400 hover:text-yellow-400 text-lg"
-                      >
-                        ✏️
-                      </button>
+                        }} className="text-slate-500 hover:text-white transition-colors text-base">✏️</button>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            ))}
+                  )}
+                </div>
+              )
+            })}
+            {filtered.length === 0 && (
+              <p className="text-center text-slate-600 py-8 text-sm">Aucun match pour ces filtres</p>
+            )}
           </div>
         </div>
       )}
 
-
-      {/* Onglet Paramètres */}
+      {/* ── PARAMÈTRES ── */}
       {tab === 'settings' && (
-        <div>
-          <div className="bg-slate-800 rounded-xl p-4 mb-4">
-            <h3 className="font-bold mb-3">👤 Nom du joueur volant</h3>
-            <p className="text-slate-400 text-sm mb-3">
-              Remplace «Joueur volant» par le vrai nom du remplaçant d'Alexandra de Broux.
-            </p>
-            <input
-              type="text" value={newJoueurVolant}
-              onChange={e => setNewJoueurVolant(e.target.value)}
+        <div className="flex flex-col gap-4">
+          <div className="rounded-xl p-5" style={card}>
+            <h3 className="font-bold mb-1">👤 Joueur volant</h3>
+            <p className="text-slate-500 text-sm mb-4">Remplace «Joueur volant» par le vrai nom du remplaçant.</p>
+            <input type="text" value={newJoueurVolant} onChange={e => setNewJoueurVolant(e.target.value)}
               placeholder="Prénom / Nom"
-              className="w-full bg-slate-700 rounded-lg px-4 py-3 mb-3 focus:outline-none"
-            />
-            <button
-              onClick={saveJoueurVolant} disabled={saving || newJoueurVolant === joueurVolant}
-              className="w-full bg-yellow-400 disabled:opacity-50 hover:bg-yellow-300 text-slate-900 font-bold py-3 rounded-xl transition-colors"
-            >
-              {saving ? '…' : 'Mettre à jour le nom'}
+              className="w-full rounded-xl px-4 py-3 mb-3 focus:outline-none text-white"
+              style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }} />
+            <button onClick={saveJoueurVolant} disabled={saving || newJoueurVolant === joueurVolant}
+              className="w-full py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-40"
+              style={{ background: '#10b981', color: '#fff' }}>
+              {saving ? '…' : 'Mettre à jour'}
             </button>
           </div>
 
-          <div className="bg-red-950 border border-red-800 rounded-xl p-4 mb-4">
-            <h3 className="font-bold mb-2 text-red-400">🗑️ Réinitialiser tous les scores</h3>
-            <p className="text-slate-400 text-sm mb-4">
-              Remet tous les scores à zéro. À faire avant le tournoi pour repartir propre.
-            </p>
+          <div className="rounded-xl p-5" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+            <h3 className="font-bold mb-1 text-red-400">🗑️ Réinitialiser tous les scores</h3>
+            <p className="text-slate-500 text-sm mb-4">Remet tous les scores à zéro. Irréversible.</p>
             <button
               onClick={async () => {
-                if (!confirm('Remettre TOUS les scores à zéro ? Cette action est irréversible.')) return
+                if (!confirm('Remettre TOUS les scores à zéro ?')) return
                 setSaving(true)
                 await fetch('/api/admin/reset', { method: 'POST' })
                 await load()
                 setSaving(false)
               }}
               disabled={saving}
-              className="w-full bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-bold py-3 rounded-xl transition-colors"
-            >
+              className="w-full py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-40"
+              style={{ background: '#dc2626', color: '#fff' }}>
               {saving ? '…' : 'Tout réinitialiser'}
             </button>
-          </div>
-
-          <div className="bg-slate-800 rounded-xl p-4">
-            <h3 className="font-bold mb-2">ℹ️ Anomalie détectée</h3>
-            <p className="text-slate-400 text-sm">
-              <strong className="text-white">Marianne / Patrice de Walque</strong> apparaît simultanément dans des matchs Intermédiaires (terrain CBC) et Débutants sur plusieurs rotations. Ils ne peuvent jouer qu'un seul match par rotation — laisse le score vide pour le match qu'ils ne jouent pas.
-            </p>
           </div>
         </div>
       )}
