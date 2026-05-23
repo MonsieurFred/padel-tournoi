@@ -31,15 +31,20 @@ const GROUPES = [
 
 function StandingsTable({ data, color }: { data: Standing[]; color: string }) {
   const cardStyle = { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }
-  const medals = ['🥇', '🥈', '🥉']
+  const medals: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' }
 
   if (data.length === 0) {
     return <div className="text-center py-8 text-slate-600 text-sm">Aucun score enregistré pour l'instant</div>
   }
 
+  // Calcule le rang réel : même points = même rang
+  const ranks = data.map((s, i) => {
+    const rank = data.filter(x => x.points > s.points).length + 1
+    return rank
+  })
+
   return (
     <div className="rounded-2xl overflow-hidden" style={cardStyle}>
-      {/* Header */}
       <div className="grid px-4 py-2 text-xs font-semibold uppercase tracking-wider text-slate-500"
         style={{ gridTemplateColumns: '1fr 28px 28px 28px 36px' }}>
         <span>Équipe</span>
@@ -49,26 +54,32 @@ function StandingsTable({ data, color }: { data: Standing[]; color: string }) {
         <span className="text-center">Pts</span>
       </div>
 
-      {data.map((s, i) => (
-        <div key={s.equipe}
-          className="grid px-4 py-3 items-center"
-          style={{
-            gridTemplateColumns: '1fr 28px 28px 28px 36px',
-            borderTop: '1px solid rgba(255,255,255,0.05)',
-            background: i === 0 ? 'rgba(255,255,255,0.03)' : 'transparent',
-          }}>
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="text-base w-5 flex-shrink-0">{medals[i] ?? `${i + 1}.`}</span>
-            <span className="text-sm font-medium truncate" style={{ color: i === 0 ? color : '#e2e8f0' }}>
-              {s.equipe}
-            </span>
+      {data.map((s, i) => {
+        const rank = ranks[i]
+        const isFirst = rank === 1
+        return (
+          <div key={s.equipe}
+            className="grid px-4 py-3 items-center"
+            style={{
+              gridTemplateColumns: '1fr 28px 28px 28px 36px',
+              borderTop: '1px solid rgba(255,255,255,0.05)',
+              background: isFirst ? 'rgba(255,255,255,0.03)' : 'transparent',
+            }}>
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-base w-5 flex-shrink-0">
+                {medals[rank] ?? `${rank}.`}
+              </span>
+              <span className="text-sm font-medium truncate" style={{ color: isFirst ? color : '#e2e8f0' }}>
+                {s.equipe}
+              </span>
+            </div>
+            <span className="text-center text-sm text-slate-400">{s.joue}</span>
+            <span className="text-center text-sm font-medium" style={{ color: '#10b981' }}>{s.victoires}</span>
+            <span className="text-center text-sm font-medium" style={{ color: '#f87171' }}>{s.defaites}</span>
+            <span className="text-center text-sm font-black" style={{ color: isFirst ? color : '#f8fafc' }}>{s.points}</span>
           </div>
-          <span className="text-center text-sm text-slate-400">{s.joue}</span>
-          <span className="text-center text-sm font-medium" style={{ color: '#10b981' }}>{s.victoires}</span>
-          <span className="text-center text-sm font-medium" style={{ color: '#f87171' }}>{s.defaites}</span>
-          <span className="text-center text-sm font-black" style={{ color: i === 0 ? color : '#f8fafc' }}>{s.points}</span>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }
