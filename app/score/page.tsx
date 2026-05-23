@@ -217,6 +217,24 @@ function ScorePageInner() {
 
   if (confirmed && match) {
     const canSubmit = jeuxA !== '' && jeuxB !== '' && ptsA !== '' && ptsB !== ''
+    const PTS_OPTIONS = ['0', '15', '30', '40']
+
+    function PtsSelector({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+      return (
+        <div className="grid grid-cols-4 gap-1.5">
+          {PTS_OPTIONS.map(opt => (
+            <button key={opt} type="button" onClick={() => onChange(opt)}
+              className="py-3 rounded-xl text-sm font-bold transition-all active:scale-95"
+              style={value === opt
+                ? { background: '#10b981', color: '#fff' }
+                : { background: 'rgba(255,255,255,0.07)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.08)' }}>
+              {opt}
+            </button>
+          ))}
+        </div>
+      )
+    }
+
     return (
       <div className="min-h-screen flex flex-col justify-center px-6">
         <div className="w-full max-w-sm mx-auto">
@@ -227,7 +245,7 @@ function ScorePageInner() {
           {/* Équipe A */}
           <div className="rounded-2xl p-4 mb-4" style={cardStyle}>
             <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-3">{match.equipe_a}</p>
-            <div className="flex gap-3">
+            <div className="flex gap-3 mb-3">
               <div className="flex-1">
                 <input type="number" inputMode="numeric" min={0} value={jeuxA}
                   onChange={e => setJeuxA(e.target.value)} placeholder="0" autoFocus
@@ -236,15 +254,14 @@ function ScorePageInner() {
                 />
                 <p className="text-center text-slate-500 text-xs mt-2 font-medium uppercase tracking-wider">Jeux</p>
               </div>
-              <div className="flex-1">
-                <input type="number" inputMode="numeric" min={0} value={ptsA}
-                  onChange={e => setPtsA(e.target.value)} placeholder="0"
-                  className="w-full rounded-xl py-4 text-3xl font-black text-center text-white focus:outline-none transition-all"
-                  style={{ ...inputStyle, ...(ptsA !== '' ? { borderColor: '#10b981' } : {}) }}
-                />
-                <p className="text-center text-slate-500 text-xs mt-2 font-medium uppercase tracking-wider">Points</p>
+              <div className="flex-1 flex flex-col justify-center">
+                <p className="text-center text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Points</p>
+                {ptsA !== '' && (
+                  <p className="text-center text-2xl font-black mb-2" style={{ color: '#10b981' }}>{ptsA}</p>
+                )}
               </div>
             </div>
+            <PtsSelector value={ptsA} onChange={setPtsA} />
           </div>
 
           <div className="text-center mb-4">
@@ -254,7 +271,7 @@ function ScorePageInner() {
           {/* Équipe B */}
           <div className="rounded-2xl p-4 mb-8" style={cardStyle}>
             <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-3">{match.equipe_b}</p>
-            <div className="flex gap-3">
+            <div className="flex gap-3 mb-3">
               <div className="flex-1">
                 <input type="number" inputMode="numeric" min={0} value={jeuxB}
                   onChange={e => setJeuxB(e.target.value)} placeholder="0"
@@ -263,15 +280,14 @@ function ScorePageInner() {
                 />
                 <p className="text-center text-slate-500 text-xs mt-2 font-medium uppercase tracking-wider">Jeux</p>
               </div>
-              <div className="flex-1">
-                <input type="number" inputMode="numeric" min={0} value={ptsB}
-                  onChange={e => setPtsB(e.target.value)} placeholder="0"
-                  className="w-full rounded-xl py-4 text-3xl font-black text-center text-white focus:outline-none transition-all"
-                  style={{ ...inputStyle, ...(ptsB !== '' ? { borderColor: '#10b981' } : {}) }}
-                />
-                <p className="text-center text-slate-500 text-xs mt-2 font-medium uppercase tracking-wider">Points</p>
+              <div className="flex-1 flex flex-col justify-center">
+                <p className="text-center text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">Points</p>
+                {ptsB !== '' && (
+                  <p className="text-center text-2xl font-black mb-2" style={{ color: '#10b981' }}>{ptsB}</p>
+                )}
               </div>
             </div>
+            <PtsSelector value={ptsB} onChange={setPtsB} />
           </div>
 
           <button onClick={submit} disabled={submitting || !canSubmit}
