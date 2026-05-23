@@ -35,9 +35,9 @@ const inputCls = 'w-full rounded-lg px-3 py-2 text-center text-lg focus:outline-
 export default function AdminDashboard() {
   const router = useRouter()
   const [matches, setMatches] = useState<Match[]>([])
-  const [joueurVolant, setJoueurVolant] = useState('')
-  const [newJoueurVolant, setNewJoueurVolant] = useState('')
   const [editingMatch, setEditingMatch] = useState<Match | null>(null)
+  const [editingTeam, setEditingTeam] = useState<string | null>(null)
+  const [newTeamName, setNewTeamName] = useState('')
   const [editScoreA, setEditScoreA] = useState('')
   const [editScoreB, setEditScoreB] = useState('')
   const [editPtsA, setEditPtsA] = useState('')
@@ -52,8 +52,6 @@ export default function AdminDashboard() {
     if (res.status === 401) { router.push('/admin'); return }
     const data = await res.json()
     setMatches(data.matches || [])
-    setJoueurVolant(data.joueurVolant || '')
-    setNewJoueurVolant(data.joueurVolant || '')
   }
 
   useEffect(() => { load() }, [])
@@ -75,14 +73,17 @@ export default function AdminDashboard() {
     setSaving(false)
   }
 
-  async function saveJoueurVolant() {
+  async function saveTeamName() {
+    if (!editingTeam || !newTeamName || newTeamName === editingTeam) return
     setSaving(true)
     await fetch('/api/admin/joueur-volant', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ oldName: joueurVolant, newName: newJoueurVolant }),
+      body: JSON.stringify({ oldName: editingTeam, newName: newTeamName }),
     })
     await load()
+    setEditingTeam(null)
+    setNewTeamName('')
     setSaving(false)
   }
 
@@ -254,41 +255,72 @@ export default function AdminDashboard() {
       )}
 
       {/* ── PARAMÈTRES ── */}
-      {tab === 'settings' && (
-        <div className="flex flex-col gap-4">
-          <div className="rounded-xl p-5" style={card}>
-            <h3 className="font-bold mb-1">👤 Joueur volant</h3>
-            <p className="text-slate-500 text-sm mb-4">Remplace «Joueur volant» par le vrai nom du remplaçant.</p>
-            <input type="text" value={newJoueurVolant} onChange={e => setNewJoueurVolant(e.target.value)}
-              placeholder="Prénom / Nom"
-              className="w-full rounded-xl px-4 py-3 mb-3 focus:outline-none text-white"
-              style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }} />
-            <button onClick={saveJoueurVolant} disabled={saving || !newJoueurVolant || newJoueurVolant === joueurVolant}
-              className="w-full py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-40"
-              style={{ background: '#10b981', color: '#fff' }}>
-              {saving ? '…' : 'Mettre à jour'}
-            </button>
-          </div>
+      {tab === 'settings' && (() => {
+        const teams = [...new Set(matches.flatMap(m => [m.equipe_a, m.equipe_b]))].sort()
+        return (
+          <div className="flex flex-col gap-4">
+            {/* Renommer une équipe */}
+            <div className="rounded-xl p-5" style={card}>
+              <h3 className="font-bold mb-1">✏️ Renommer une équipe</h3>
+              <p className="text-slate-500 text-sm mb-4">Utile si une équipe change de composition ou en cas d'erreur.</p>
 
-          <div className="rounded-xl p-5" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
-            <h3 className="font-bold mb-1 text-red-400">🗑️ Réinitialiser tous les scores</h3>
-            <p className="text-slate-500 text-sm mb-4">Remet tous les scores à zéro. Irréversible.</p>
-            <button
-              onClick={async () => {
-                if (!confirm('Remettre TOUS les scores à zéro ?')) return
-                setSaving(true)
-                await fetch('/api/admin/reset', { method: 'POST' })
-                await load()
-                setSaving(false)
-              }}
-              disabled={saving}
-              className="w-full py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-40"
-              style={{ background: '#dc2626', color: '#fff' }}>
-              {saving ? '…' : 'Tout réinitialiser'}
-            </button>
+              {editingTeam ? (
+                <div>
+                  <p className="text-xs text-slate-500 mb-1">Ancien nom</p>
+                  <p className="text-sm font-semibold mb-3 px-3 py-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.05)' }}>{editingTeam}</p>
+                  <p className="text-xs text-slate-500 mb-1">Nouveau nom</p>
+                  <input type="text" value={newTeamName} onChange={e => setNewTeamName(e.target.value)}
+                    placeholder="Nouveau nom…" autoFocus
+                    className="w-full rounded-xl px-4 py-3 mb-3 focus:outline-none text-white"
+                    style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)' }} />
+                  <div className="flex gap-2">
+                    <button onClick={saveTeamName} disabled={saving || !newTeamName || newTeamName === editingTeam}
+                      className="flex-1 py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-40"
+                      style={{ background: '#10b981', color: '#fff' }}>
+                      {saving ? '…' : 'Sauvegarder'}
+                    </button>
+                    <button onClick={() => { setEditingTeam(null); setNewTeamName('') }}
+                      className="flex-1 py-3 rounded-xl text-sm font-semibold"
+                      style={{ background: 'rgba(255,255,255,0.06)', color: '#64748b' }}>
+                      Annuler
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-1 max-h-64 overflow-y-auto">
+                  {teams.map(team => (
+                    <button key={team} onClick={() => { setEditingTeam(team); setNewTeamName(team) }}
+                      className="flex items-center justify-between px-3 py-2.5 rounded-lg text-left transition-all"
+                      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <span className="text-sm truncate pr-2">{team}</span>
+                      <span className="text-slate-500 text-xs flex-shrink-0">✏️</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Reset scores */}
+            <div className="rounded-xl p-5" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+              <h3 className="font-bold mb-1 text-red-400">🗑️ Réinitialiser tous les scores</h3>
+              <p className="text-slate-500 text-sm mb-4">Remet tous les scores à zéro. Irréversible.</p>
+              <button
+                onClick={async () => {
+                  if (!confirm('Remettre TOUS les scores à zéro ?')) return
+                  setSaving(true)
+                  await fetch('/api/admin/reset', { method: 'POST' })
+                  await load()
+                  setSaving(false)
+                }}
+                disabled={saving}
+                className="w-full py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-40"
+                style={{ background: '#dc2626', color: '#fff' }}>
+                {saving ? '…' : 'Tout réinitialiser'}
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
     </div>
   )
 }
