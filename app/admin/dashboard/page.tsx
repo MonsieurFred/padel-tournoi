@@ -157,7 +157,7 @@ export default function AdminDashboard() {
               <div key={m.id} className="bg-slate-800 rounded-xl px-4 py-3">
                 {editingMatch?.id === m.id ? (
                   <div>
-                    <p className="text-yellow-400 font-bold mb-2">{m.terrain} · R{m.rotation}</p>
+                    <p className="text-yellow-400 font-bold mb-2">{m.terrain} · Round {m.rotation}</p>
                     <p className="text-sm mb-3">{m.equipe_a} vs {m.equipe_b}</p>
                     <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center mb-1">
                       <input type="number" min={0} value={editScoreA} onChange={e => setEditScoreA(e.target.value)} placeholder="Jeux A"
@@ -193,7 +193,7 @@ export default function AdminDashboard() {
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-yellow-400 font-bold text-sm">{m.terrain}</span>
-                        <span className="text-slate-500 text-xs">R{m.rotation} · {GROUPE_EMOJI[m.groupe]}</span>
+                        <span className="text-slate-500 text-xs">Round {m.rotation} · {GROUPE_EMOJI[m.groupe]}</span>
                       </div>
                       <p className="text-xs text-slate-300 truncate max-w-[220px]">{m.equipe_a} vs {m.equipe_b}</p>
                     </div>

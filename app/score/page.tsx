@@ -31,7 +31,7 @@ function Header({ terrain, rotation, groupe }: { terrain: string; rotation?: num
       <div>
         <div className="flex items-center gap-2 mb-1">
           <span className="text-white font-bold text-lg">{terrain}</span>
-          {rotation && <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.1)', color: '#94a3b8' }}>R{rotation}</span>}
+          {rotation && <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.1)', color: '#94a3b8' }}>Round {rotation}</span>}
         </div>
         {groupe && <p className="text-xs font-medium" style={{ color }}>{groupe}</p>}
       </div>
