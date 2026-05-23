@@ -541,6 +541,25 @@ export default function AdminDashboard() {
               )}
             </div>
 
+            {/* Restaurer le planning */}
+            <div className="rounded-xl p-5" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
+              <h3 className="font-bold mb-1 text-amber-400">↩️ Restaurer le planning d'origine</h3>
+              <p className="text-slate-500 text-sm mb-4">Remet tous les matchs dans leur ordre initial. Les scores ne sont pas effacés.</p>
+              <button
+                onClick={async () => {
+                  if (!confirm('Restaurer le planning d\'origine ?')) return
+                  setSaving(true)
+                  await fetch('/api/admin/restore-planning', { method: 'POST' })
+                  await load()
+                  setSaving(false)
+                }}
+                disabled={saving}
+                className="w-full py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-40"
+                style={{ background: '#d97706', color: '#fff' }}>
+                {saving ? '…' : 'Restaurer'}
+              </button>
+            </div>
+
             {/* Reset scores */}
             <div className="rounded-xl p-5" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
               <h3 className="font-bold mb-1 text-red-400">🗑️ Réinitialiser tous les scores</h3>
