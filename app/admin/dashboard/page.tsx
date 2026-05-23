@@ -45,6 +45,10 @@ export default function AdminDashboard() {
   const [planEquipeA, setPlanEquipeA] = useState('')
   const [planEquipeB, setPlanEquipeB] = useState('')
   const [planFilterRound, setPlanFilterRound] = useState<number | null>(null)
+  const [swapGroupe, setSwapGroupe] = useState<Groupe>('Compétiteurs')
+  const [swapA, setSwapA] = useState<Match | null>(null)
+  const [swapB, setSwapB] = useState<Match | null>(null)
+  const [swapping, setSwapping] = useState(false)
   const [editScoreA, setEditScoreA] = useState('')
   const [editScoreB, setEditScoreB] = useState('')
   const [editPtsA, setEditPtsA] = useState('')
@@ -78,6 +82,27 @@ export default function AdminDashboard() {
     await load()
     setEditingMatch(null)
     setSaving(false)
+  }
+
+  async function confirmSwap() {
+    if (!swapA || !swapB) return
+    setSwapping(true)
+    await fetch('/api/admin/match', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ matchIdA: swapA.id, matchIdB: swapB.id }),
+    })
+    await load()
+    setSwapA(null)
+    setSwapB(null)
+    setSwapping(false)
+  }
+
+  function handleSwapSelect(m: Match) {
+    if (swapA?.id === m.id) { setSwapA(null); setSwapB(null); return }
+    if (swapB?.id === m.id) { setSwapB(null); return }
+    if (!swapA) { setSwapA(m); return }
+    setSwapB(m)
   }
 
   async function saveMatchPlan() {
@@ -325,6 +350,86 @@ export default function AdminDashboard() {
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* Intervertir deux matchs */}
+            <div className="rounded-xl p-5" style={card}>
+              <h3 className="font-bold mb-1">🔄 Intervertir deux matchs</h3>
+              <p className="text-slate-500 text-sm mb-4">Appuie sur un match, puis sur un autre pour intervertir leurs créneaux.</p>
+
+              {/* Tabs groupe */}
+              <div className="grid grid-cols-3 gap-1 mb-4">
+                {GROUPES.map(g => (
+                  <button key={g} onClick={() => { setSwapGroupe(g); setSwapA(null); setSwapB(null) }}
+                    className="py-2 rounded-lg text-xs font-bold transition-all"
+                    style={swapGroupe === g
+                      ? { background: GROUPE_COLOR[g], color: '#fff' }
+                      : { background: 'rgba(255,255,255,0.06)', color: '#64748b' }}>
+                    {g === 'Compétiteurs' ? 'Comp.' : g === 'Intermédiaires' ? 'Inter.' : 'Déb.'}
+                  </button>
+                ))}
+              </div>
+
+              {/* Statut sélection */}
+              {swapA && !swapB && (
+                <div className="mb-3 px-3 py-2 rounded-lg flex items-center justify-between gap-2"
+                  style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)' }}>
+                  <p className="text-xs text-indigo-300">1 sélectionné · appuie sur un 2e match</p>
+                  <button onClick={() => setSwapA(null)} className="text-slate-500 text-xs hover:text-white">✕</button>
+                </div>
+              )}
+              {swapA && swapB && (
+                <div className="mb-3 rounded-lg overflow-hidden" style={{ border: '1px solid rgba(16,185,129,0.3)' }}>
+                  <div className="px-3 py-2" style={{ background: 'rgba(16,185,129,0.12)' }}>
+                    <p className="text-xs text-emerald-400 font-semibold mb-1">Intervertir ces deux créneaux ?</p>
+                    <p className="text-xs text-slate-400">R{swapA.rotation} {swapA.terrain} · {swapA.equipe_a.split('/')[0].trim()} vs {swapA.equipe_b.split('/')[0].trim()}</p>
+                    <p className="text-xs text-slate-500 my-0.5">↕</p>
+                    <p className="text-xs text-slate-400">R{swapB.rotation} {swapB.terrain} · {swapB.equipe_a.split('/')[0].trim()} vs {swapB.equipe_b.split('/')[0].trim()}</p>
+                  </div>
+                  <div className="flex gap-2 p-2" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                    <button onClick={confirmSwap} disabled={swapping}
+                      className="flex-1 py-2 rounded-lg text-xs font-bold disabled:opacity-40"
+                      style={{ background: '#10b981', color: '#fff' }}>
+                      {swapping ? '…' : 'Confirmer'}
+                    </button>
+                    <button onClick={() => { setSwapA(null); setSwapB(null) }}
+                      className="flex-1 py-2 rounded-lg text-xs font-semibold"
+                      style={{ background: 'rgba(255,255,255,0.06)', color: '#64748b' }}>
+                      Annuler
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Liste des matchs du groupe */}
+              <div className="flex flex-col gap-1 max-h-72 overflow-y-auto">
+                {matches
+                  .filter(m => m.groupe === swapGroupe)
+                  .sort((a, b) => a.rotation - b.rotation)
+                  .map(m => {
+                    const isA = swapA?.id === m.id
+                    const isB = swapB?.id === m.id
+                    const color = GROUPE_COLOR[swapGroupe]
+                    return (
+                      <button key={m.id} onClick={() => handleSwapSelect(m)}
+                        className="flex items-center justify-between px-3 py-2.5 rounded-lg text-left transition-all"
+                        style={{
+                          background: isA || isB ? `${color}20` : 'rgba(255,255,255,0.04)',
+                          border: isA ? `1.5px solid ${color}` : isB ? `1.5px solid #10b981` : '1px solid rgba(255,255,255,0.06)',
+                        }}>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs text-slate-500 mb-0.5">R{m.rotation} · {m.horaire} · {m.terrain}</p>
+                          <p className="text-xs text-slate-200 truncate">{m.equipe_a.split('/')[0].trim()} <span className="text-slate-600">vs</span> {m.equipe_b.split('/')[0].trim()}</p>
+                        </div>
+                        {(isA || isB) && (
+                          <span className="text-xs font-bold ml-2 flex-shrink-0" style={{ color: isA ? color : '#10b981' }}>
+                            {isA ? '1' : '2'}
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
+              </div>
             </div>
 
             {/* Modifier le planning */}
