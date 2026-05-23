@@ -38,6 +38,13 @@ export default function AdminDashboard() {
   const [editingMatch, setEditingMatch] = useState<Match | null>(null)
   const [editingTeam, setEditingTeam] = useState<string | null>(null)
   const [newTeamName, setNewTeamName] = useState('')
+  const [editingMatchPlan, setEditingMatchPlan] = useState<Match | null>(null)
+  const [planRotation, setPlanRotation] = useState('')
+  const [planHoraire, setPlanHoraire] = useState('')
+  const [planTerrain, setPlanTerrain] = useState('')
+  const [planEquipeA, setPlanEquipeA] = useState('')
+  const [planEquipeB, setPlanEquipeB] = useState('')
+  const [planFilterRound, setPlanFilterRound] = useState<number | null>(null)
   const [editScoreA, setEditScoreA] = useState('')
   const [editScoreB, setEditScoreB] = useState('')
   const [editPtsA, setEditPtsA] = useState('')
@@ -70,6 +77,26 @@ export default function AdminDashboard() {
     })
     await load()
     setEditingMatch(null)
+    setSaving(false)
+  }
+
+  async function saveMatchPlan() {
+    if (!editingMatchPlan) return
+    setSaving(true)
+    await fetch('/api/admin/match', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        matchId: editingMatchPlan.id,
+        rotation: parseInt(planRotation),
+        horaire: planHoraire,
+        terrain: planTerrain,
+        equipeA: planEquipeA,
+        equipeB: planEquipeB,
+      }),
+    })
+    await load()
+    setEditingMatchPlan(null)
     setSaving(false)
   }
 
@@ -296,6 +323,115 @@ export default function AdminDashboard() {
                       <span className="text-slate-500 text-xs flex-shrink-0">✏️</span>
                     </button>
                   ))}
+                </div>
+              )}
+            </div>
+
+            {/* Modifier le planning */}
+            <div className="rounded-xl p-5" style={card}>
+              <h3 className="font-bold mb-1">📅 Modifier le planning</h3>
+              <p className="text-slate-500 text-sm mb-4">Changer les équipes, l'horaire ou le terrain d'un match.</p>
+
+              {editingMatchPlan ? (
+                <div>
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div>
+                      <p className="text-xs text-slate-500 mb-1">Round</p>
+                      <input type="number" min={1} value={planRotation} onChange={e => setPlanRotation(e.target.value)}
+                        className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none text-white"
+                        style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)' }} />
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500 mb-1">Horaire</p>
+                      <input type="text" value={planHoraire} onChange={e => setPlanHoraire(e.target.value)}
+                        placeholder="18:30"
+                        className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none text-white"
+                        style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)' }} />
+                    </div>
+                  </div>
+                  <div className="mb-3">
+                    <p className="text-xs text-slate-500 mb-1">Terrain</p>
+                    <input type="text" value={planTerrain} onChange={e => setPlanTerrain(e.target.value)}
+                      placeholder="T1"
+                      className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none text-white"
+                      style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)' }} />
+                  </div>
+                  <div className="mb-3">
+                    <p className="text-xs text-slate-500 mb-1">Équipe A</p>
+                    <input type="text" value={planEquipeA} onChange={e => setPlanEquipeA(e.target.value)}
+                      className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none text-white"
+                      style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)' }} />
+                  </div>
+                  <div className="mb-4">
+                    <p className="text-xs text-slate-500 mb-1">Équipe B</p>
+                    <input type="text" value={planEquipeB} onChange={e => setPlanEquipeB(e.target.value)}
+                      className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none text-white"
+                      style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)' }} />
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={saveMatchPlan} disabled={saving}
+                      className="flex-1 py-3 rounded-xl font-bold text-sm disabled:opacity-40"
+                      style={{ background: '#10b981', color: '#fff' }}>
+                      {saving ? '…' : 'Sauvegarder'}
+                    </button>
+                    <button onClick={() => setEditingMatchPlan(null)}
+                      className="flex-1 py-3 rounded-xl text-sm font-semibold"
+                      style={{ background: 'rgba(255,255,255,0.06)', color: '#64748b' }}>
+                      Annuler
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  {/* Filtre round */}
+                  <div className="flex gap-2 mb-3 flex-wrap">
+                    <button onClick={() => setPlanFilterRound(null)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                      style={!planFilterRound
+                        ? { background: 'rgba(255,255,255,0.15)', color: '#fff' }
+                        : { background: 'rgba(255,255,255,0.06)', color: '#64748b', border: '1px solid rgba(255,255,255,0.08)' }}>
+                      Tous
+                    </button>
+                    {rounds.map(r => (
+                      <button key={r} onClick={() => setPlanFilterRound(planFilterRound === r ? null : r)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                        style={planFilterRound === r
+                          ? { background: 'rgba(255,255,255,0.15)', color: '#fff' }
+                          : { background: 'rgba(255,255,255,0.06)', color: '#64748b', border: '1px solid rgba(255,255,255,0.08)' }}>
+                        Round {r}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex flex-col gap-1 max-h-72 overflow-y-auto">
+                    {matches
+                      .filter(m => !planFilterRound || m.rotation === planFilterRound)
+                      .map(m => {
+                        const color = GROUPE_COLOR[m.groupe as Groupe] ?? '#94a3b8'
+                        return (
+                          <button key={m.id}
+                            onClick={() => {
+                              setEditingMatchPlan(m)
+                              setPlanRotation(m.rotation.toString())
+                              setPlanHoraire(m.horaire)
+                              setPlanTerrain(m.terrain)
+                              setPlanEquipeA(m.equipe_a)
+                              setPlanEquipeB(m.equipe_b)
+                            }}
+                            className="flex items-center justify-between px-3 py-2.5 rounded-lg text-left transition-all"
+                            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <span className="text-xs font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
+                                  style={{ background: `${color}22`, color, fontSize: '10px' }}>{m.groupe.slice(0,3)}</span>
+                                <span className="text-xs text-slate-500">R{m.rotation} · {m.terrain} · {m.horaire}</span>
+                              </div>
+                              <p className="text-xs text-slate-300 truncate">{m.equipe_a} vs {m.equipe_b}</p>
+                            </div>
+                            <span className="text-slate-500 text-xs flex-shrink-0 ml-2">✏️</span>
+                          </button>
+                        )
+                      })}
+                  </div>
                 </div>
               )}
             </div>
