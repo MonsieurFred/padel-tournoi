@@ -35,7 +35,6 @@ const inputCls = 'w-full rounded-lg px-3 py-2 text-center text-lg focus:outline-
 export default function AdminDashboard() {
   const router = useRouter()
   const [matches, setMatches] = useState<Match[]>([])
-  const [codes, setCodes] = useState<TerrainCode[]>([])
   const [joueurVolant, setJoueurVolant] = useState('')
   const [newJoueurVolant, setNewJoueurVolant] = useState('')
   const [editingMatch, setEditingMatch] = useState<Match | null>(null)
@@ -53,7 +52,6 @@ export default function AdminDashboard() {
     if (res.status === 401) { router.push('/admin'); return }
     const data = await res.json()
     setMatches(data.matches || [])
-    setCodes(data.codes || [])
     setJoueurVolant(data.joueurVolant || '')
     setNewJoueurVolant(data.joueurVolant || '')
   }
@@ -82,7 +80,7 @@ export default function AdminDashboard() {
     await fetch('/api/admin/joueur-volant', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ oldName: joueurVolant.startsWith('Joueur volant') ? joueurVolant : 'Joueur volant', newName: newJoueurVolant }),
+      body: JSON.stringify({ oldName: joueurVolant, newName: newJoueurVolant }),
     })
     await load()
     setSaving(false)
@@ -265,7 +263,7 @@ export default function AdminDashboard() {
               placeholder="Prénom / Nom"
               className="w-full rounded-xl px-4 py-3 mb-3 focus:outline-none text-white"
               style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }} />
-            <button onClick={saveJoueurVolant} disabled={saving || newJoueurVolant === joueurVolant}
+            <button onClick={saveJoueurVolant} disabled={saving || !newJoueurVolant || newJoueurVolant === joueurVolant}
               className="w-full py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-40"
               style={{ background: '#10b981', color: '#fff' }}>
               {saving ? '…' : 'Mettre à jour'}

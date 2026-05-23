@@ -25,22 +25,7 @@ export async function POST(request: NextRequest) {
   if (body.action === 'submit') {
     const { matchId, scoreA, scoreB, pointsA, pointsB } = body
     await submitScore(matchId, scoreA, scoreB, pointsA, pointsB)
-
-    // Cherche le match actuel pour obtenir le terrain
-    const rows = await sql`SELECT terrain, rotation FROM matches WHERE id = ${matchId}`
-    const current = rows[0]
-    let nextMatch = null
-    if (current) {
-      const next = await sql`
-        SELECT * FROM matches
-        WHERE terrain = ${current.terrain} AND rotation > ${current.rotation}
-        ORDER BY rotation ASC
-        LIMIT 1
-      `
-      nextMatch = next[0] || null
-    }
-
-    return Response.json({ ok: true, nextMatch })
+    return Response.json({ ok: true })
   }
 
   return Response.json({ ok: false, error: 'Action inconnue' }, { status: 400 })

@@ -6,13 +6,6 @@ import { redirect } from 'next/navigation'
 
 // ── Score entry ────────────────────────────────────────────────────────────
 
-export async function verifyTerrainCode(terrain: string, code: string): Promise<boolean> {
-  const rows = await sql`
-    SELECT code FROM terrain_codes WHERE terrain = ${terrain}
-  `
-  return rows.length > 0 && rows[0].code === code
-}
-
 export async function submitScore(matchId: number, scoreA: number, scoreB: number, pointsA: number, pointsB: number) {
   await sql`
     UPDATE matches
@@ -74,24 +67,6 @@ export async function adminUpdateTerrainCode(terrain: string, newCode: string) {
 }
 
 // ── Data queries ───────────────────────────────────────────────────────────
-
-export async function getMatchesByRotation(rotation: number) {
-  return sql`
-    SELECT * FROM matches WHERE rotation = ${rotation} ORDER BY groupe, terrain
-  `
-}
-
-export async function getMatchById(id: number) {
-  const rows = await sql`SELECT * FROM matches WHERE id = ${id}`
-  return rows[0] || null
-}
-
-export async function getNextMatch(terrain: string, rotation: number) {
-  const rows = await sql`
-    SELECT * FROM matches WHERE terrain = ${terrain} AND rotation = ${rotation}
-  `
-  return rows[0] || null
-}
 
 export async function getAllMatches() {
   return sql`SELECT * FROM matches ORDER BY rotation, groupe, terrain`

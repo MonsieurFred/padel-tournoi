@@ -14,42 +14,50 @@ export default function AdminLoginPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
-    const res = await fetch('/api/admin/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password }),
-    })
-    const data = await res.json()
-    if (data.ok) {
-      router.push('/admin/dashboard')
-    } else {
-      setError('Mot de passe incorrect')
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      })
+      const data = await res.json()
+      if (data.ok) {
+        router.push('/admin/dashboard')
+      } else {
+        setError('Mot de passe incorrect')
+      }
+    } catch {
+      setError('Erreur de connexion, réessaie.')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6" style={{ background: '#0a0f1e' }}>
       <div className="w-full max-w-xs">
-        <div className="flex items-center gap-3 mb-8">
-          <Link href="/" className="text-slate-400 hover:text-white text-2xl">←</Link>
-          <h1 className="text-2xl font-bold">Accès admin</h1>
+        <div className="flex items-center gap-3 mb-10">
+          <Link href="/" className="flex items-center justify-center w-9 h-9 rounded-xl text-slate-400 hover:text-white transition-colors"
+            style={{ background: 'rgba(255,255,255,0.07)' }}>←</Link>
+          <h1 className="text-xl font-bold">Accès admin</h1>
         </div>
 
-        <form onSubmit={handleLogin} className="flex flex-col gap-4">
+        <form onSubmit={handleLogin} className="flex flex-col gap-3">
           <input
             type="password"
             value={password}
             onChange={e => setPassword(e.target.value)}
             placeholder="Mot de passe"
-            className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-4 text-lg focus:outline-none focus:border-yellow-400"
             autoFocus
+            className="w-full rounded-xl px-4 py-4 text-base focus:outline-none text-white"
+            style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }}
           />
           {error && <p className="text-red-400 text-sm">{error}</p>}
           <button
             type="submit"
             disabled={loading || !password}
-            className="w-full bg-yellow-400 disabled:opacity-50 hover:bg-yellow-300 text-slate-900 font-bold py-4 rounded-xl text-lg transition-colors"
+            className="w-full py-4 rounded-xl font-bold text-base transition-all disabled:opacity-40"
+            style={{ background: '#10b981', color: '#fff' }}
           >
             {loading ? 'Connexion…' : 'Se connecter'}
           </button>

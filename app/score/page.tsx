@@ -64,11 +64,16 @@ function ScorePageInner() {
     setConfirmed(false)
     setDone(false)
     setJeuxA(''); setJeuxB(''); setPtsA(''); setPtsB('')
-    const res = await fetch(`/api/score?terrain=${encodeURIComponent(terrain!)}&_=${Date.now()}`, { cache: 'no-store' })
-    const data = await res.json()
-    if (data.match) { setMatch(data.match); setAllDone(false) }
-    else { setMatch(null); setAllDone(true) }
-    setLoading(false)
+    try {
+      const res = await fetch(`/api/score?terrain=${encodeURIComponent(terrain!)}&_=${Date.now()}`, { cache: 'no-store' })
+      const data = await res.json()
+      if (data.match) { setMatch(data.match); setAllDone(false) }
+      else { setMatch(null); setAllDone(true) }
+    } catch {
+      setMatch(null)
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function submit() {
@@ -77,14 +82,19 @@ function ScorePageInner() {
     const pA = parseInt(ptsA), pB = parseInt(ptsB)
     if (isNaN(jA) || isNaN(jB) || isNaN(pA) || isNaN(pB)) return
     setSubmitting(true)
-    const res = await fetch('/api/score', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'submit', matchId: match.id, scoreA: jA, scoreB: jB, pointsA: pA, pointsB: pB }),
-    })
-    const data = await res.json()
-    if (data.ok) setDone(true)
-    setSubmitting(false)
+    try {
+      const res = await fetch('/api/score', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'submit', matchId: match.id, scoreA: jA, scoreB: jB, pointsA: pA, pointsB: pB }),
+      })
+      const data = await res.json()
+      if (data.ok) setDone(true)
+    } catch {
+      // réseau indisponible, l'utilisateur peut réessayer
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const cardStyle = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }
