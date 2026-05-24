@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { sql } from '@/lib/db'
 import { isAdminAuthenticated } from '@/lib/actions'
 
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   if (!await isAdminAuthenticated()) return Response.json({ ok: false }, { status: 401 })
   await sql`
     UPDATE matches

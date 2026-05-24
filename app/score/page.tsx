@@ -57,6 +57,7 @@ function ScorePageInner() {
 
   useEffect(() => {
     if (terrain) loadCurrentMatch()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [terrain])
 
   async function loadCurrentMatch() {
@@ -106,7 +107,7 @@ function ScorePageInner() {
         <div className="text-5xl mb-6">📲</div>
         <h2 className="text-xl font-bold mb-2">Scanne le QR code</h2>
         <p className="text-slate-400 mb-8">Chaque terrain a son propre QR code affiché sur place.</p>
-        <Link href="/" className="text-sm" style={{ color: '#10b981' }}>← Retour à l'accueil</Link>
+        <Link href="/" className="text-sm" style={{ color: '#10b981' }}>← Retour à l&apos;accueil</Link>
       </div>
     )
   }
@@ -184,7 +185,7 @@ function ScorePageInner() {
         <div className="w-full max-w-sm mx-auto">
           <Header terrain={match.terrain} rotation={match.rotation} groupe={match.groupe} />
 
-          <h2 className="text-2xl font-bold mb-6">C'est bien votre match ?</h2>
+          <h2 className="text-2xl font-bold mb-6">C&apos;est bien votre match ?</h2>
 
           <div className="rounded-2xl overflow-hidden mb-8" style={cardStyle}>
             <div className="px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
@@ -211,7 +212,7 @@ function ScorePageInner() {
               <button onClick={() => setConfirmed(true)}
                 className="flex-1 py-4 rounded-2xl font-bold text-base transition-all active:scale-95"
                 style={{ background: '#10b981', color: '#fff' }}>
-                Oui, c'est nous
+                Oui, c&apos;est nous
               </button>
               <button onClick={() => setWrongTerrain(true)}
                 className="flex-1 py-4 rounded-2xl font-bold text-base transition-all active:scale-95"

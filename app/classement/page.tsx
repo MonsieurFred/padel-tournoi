@@ -34,14 +34,11 @@ function StandingsTable({ data, color }: { data: Standing[]; color: string }) {
   const medals: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' }
 
   if (data.length === 0) {
-    return <div className="text-center py-8 text-slate-600 text-sm">Aucun score enregistré pour l'instant</div>
+    return <div className="text-center py-8 text-slate-600 text-sm">Aucun score enregistré pour l&apos;instant</div>
   }
 
   // Calcule le rang réel : même points = même rang
-  const ranks = data.map((s, i) => {
-    const rank = data.filter(x => x.points > s.points).length + 1
-    return rank
-  })
+  const ranks = data.map(s => data.filter(x => x.points > s.points).length + 1)
 
   return (
     <div className="rounded-2xl overflow-hidden" style={cardStyle}>
@@ -102,7 +99,6 @@ export default function ClassementPage() {
     return () => clearInterval(interval)
   }, [])
 
-  const cardStyle = { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }
   const activeGroup = GROUPES.find(g => g.key === activeTab)!
   const activeData = standings ? standings[activeTab] : []
 
