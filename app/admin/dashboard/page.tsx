@@ -18,8 +18,6 @@ type Match = {
   points_b: number | null
 }
 
-type TerrainCode = { terrain: string; code: string }
-
 const GROUPES = ['Compétiteurs', 'Intermédiaires', 'Débutants'] as const
 type Groupe = typeof GROUPES[number]
 
@@ -65,7 +63,7 @@ export default function AdminDashboard() {
     setMatches(data.matches || [])
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function saveScore() {
     if (!editingMatch) return
@@ -314,7 +312,7 @@ export default function AdminDashboard() {
             {/* Renommer une équipe */}
             <div className="rounded-xl p-5" style={card}>
               <h3 className="font-bold mb-1">✏️ Renommer une équipe</h3>
-              <p className="text-slate-500 text-sm mb-4">Utile si une équipe change de composition ou en cas d'erreur.</p>
+              <p className="text-slate-500 text-sm mb-4">Utile si une équipe change de composition ou en cas d&apos;erreur.</p>
 
               {editingTeam ? (
                 <div>
@@ -435,7 +433,7 @@ export default function AdminDashboard() {
             {/* Modifier le planning */}
             <div className="rounded-xl p-5" style={card}>
               <h3 className="font-bold mb-1">📅 Modifier le planning</h3>
-              <p className="text-slate-500 text-sm mb-4">Changer les équipes, l'horaire ou le terrain d'un match.</p>
+              <p className="text-slate-500 text-sm mb-4">Changer les équipes, l&apos;horaire ou le terrain d&apos;un match.</p>
 
               {editingMatchPlan ? (
                 <div>
@@ -543,7 +541,7 @@ export default function AdminDashboard() {
 
             {/* Restaurer le planning */}
             <div className="rounded-xl p-5" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
-              <h3 className="font-bold mb-1 text-amber-400">↩️ Restaurer le planning d'origine</h3>
+              <h3 className="font-bold mb-1 text-amber-400">↩️ Restaurer le planning d&apos;origine</h3>
               <p className="text-slate-500 text-sm mb-4">Remet tous les matchs dans leur ordre initial. Les scores ne sont pas effacés.</p>
               <button
                 onClick={async () => {
